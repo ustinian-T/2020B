@@ -1,0 +1,8 @@
+._qa/
+.pytest_cache/
+__pycache__/
+*.py[cod]
+*.inspect.ndjson
+~$*
+.DS_Store
+node_modules/
