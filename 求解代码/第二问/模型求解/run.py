@@ -15,6 +15,14 @@ from .export_results import (
 from .robust_dp_q4 import scan_safe_baselines, simulate_safe_baseline
 from .scenario_tree_milp import simulate_tree_policy, solve_scenario_tree
 from .validate_q2 import validate_level_three
+from .validate_q4 import (
+    build_first_question_fixed_plan,
+    evaluate_strategies,
+    gamma_sensitivity,
+    generate_markov_weather,
+    storm_probability_sensitivity,
+    write_rows,
+)
 
 
 QUESTION_ROOT = Path(__file__).resolve().parents[1]
@@ -97,13 +105,52 @@ def main() -> None:
             raise RuntimeError(f"第四关 Gamma={plan.gamma} 安全下界压力检验失败")
     _write_q4_baselines(OUTPUT_DIR / "第四关Gamma安全下界.csv", q4_plans)
 
+    monte_carlo_trials = 10_000
+    monte_carlo_seed = 20200816
+    robust_plan = q4_plans[6]
+    first_question_plan = build_first_question_fixed_plan(level_four, LEVEL_FOUR_GAME)
+    nominal_plan = q4_plans[2]
+    q4_scenarios = generate_markov_weather(
+        monte_carlo_trials, LEVEL_FOUR_GAME.deadline, monte_carlo_seed
+    )
+    q4_metrics, q4_trials = evaluate_strategies(
+        {
+            "第二问鲁棒决策模型(Gamma=6)": robust_plan,
+            "第一问已知天气固定方案": first_question_plan,
+            "低保护简单方案(Gamma=2)": nominal_plan,
+        },
+        q4_scenarios,
+    )
+    gamma_rows = gamma_sensitivity(level_four, LEVEL_FOUR_GAME, q4_scenarios)
+    storm_rows = storm_probability_sensitivity(
+        robust_plan, trials=5_000, seed=monte_carlo_seed + 100
+    )
+    write_rows(OUTPUT_DIR / "第四关蒙特卡洛指标对比.csv", q4_metrics)
+    write_rows(OUTPUT_DIR / "第四关蒙特卡洛逐情景结果.csv", q4_trials)
+    write_rows(OUTPUT_DIR / "第四关Gamma灵敏性分析.csv", gamma_rows)
+    write_rows(OUTPUT_DIR / "第四关沙暴概率灵敏性分析.csv", storm_rows)
+
+    robust_metrics, q1_metrics, nominal_metrics = q4_metrics
+    if robust_metrics.success_rate + 1e-12 < max(
+        q1_metrics.success_rate, nominal_metrics.success_rate
+    ):
+        raise RuntimeError("第四关鲁棒模型成功率未超过对照策略")
+
     validation_payload = {
         "第三关": validation_summary(q3_validation),
         "第四关": {
-            "检验性质": "预算语义与最短路安全下界压力检验，不代表全局最优性检验",
+            "检验性质": "压力情景、Monte Carlo样本外检验、第一问固定决策对比及灵敏性分析",
             "Gamma检验范围": [plan.gamma for plan in q4_plans],
             "全部压力情景通过": True,
             "压力情景构造": "Gamma个沙暴前置，随后全部高温完成最短路移动",
+            "Monte Carlo设置": {
+                "样本数": monte_carlo_trials,
+                "随机种子": monte_carlo_seed,
+                "天气生成": "由第一问30天天气估计的一阶Markov链",
+            },
+            "策略指标": [asdict(item) for item in q4_metrics],
+            "Gamma灵敏性": list(gamma_rows),
+            "沙暴概率灵敏性": list(storm_rows),
         },
     }
     write_json(VALIDATION_DIR / "模型检验摘要.json", validation_payload)
@@ -123,8 +170,14 @@ def main() -> None:
             "最坏情景": "".join({"晴朗": "S", "高温": "H"}[w] for w in worst.scenario),
         },
         "第四关": {
-            "当前实现": "Gamma=0...6预算接口、完整5x5地图与可证明安全策略下界",
-            "重要边界": "第四关CSV是保底可行下界，不宣称为含村庄/矿山收益的全局最优鲁棒前沿",
+            "当前实现": "Gamma预算鲁棒安全策略、Monte Carlo样本外检验、对照实验与灵敏性分析",
+            "重要边界": "当前策略为可证明安全下界；Monte Carlo验证统计优势，不替代全局最优性证明",
+            "Monte Carlo指标": [asdict(item) for item in q4_metrics],
+            "与第一问对比结论": (
+                f"鲁棒方案成功率{robust_metrics.success_rate:.2%}，"
+                f"第一问固定方案成功率{q1_metrics.success_rate:.2%}；"
+                "前者以一定保守成本换取未知天气下更高可行性"
+            ),
             "Gamma安全下界": [
                 {
                     "Gamma": plan.gamma,
@@ -143,7 +196,13 @@ def main() -> None:
         f"最坏财富={q3.robust_value:.0f}，1024情景失败={q3_validation.failure_count}，"
         f"MIP gap={q3.statistics['mip_gap']}"
     )
-    print("第四关：Gamma=0...6 安全下界及压力检验已输出（非全局最优前沿）")
+    print(
+        "第四关Monte Carlo："
+        f"鲁棒方案成功率={robust_metrics.success_rate:.2%}，"
+        f"第一问固定方案={q1_metrics.success_rate:.2%}，"
+        f"低保护方案={nominal_metrics.success_rate:.2%}，"
+        f"鲁棒方案平均财富={robust_metrics.mean_wealth:.2f}"
+    )
 
 
 if __name__ == "__main__":

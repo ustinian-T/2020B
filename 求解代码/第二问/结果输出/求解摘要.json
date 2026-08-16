@@ -12,7 +12,7 @@
     "名义Markov期望财富": 9282.378141339197,
     "求解状态": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
     "全局最优": true,
-    "运行时间秒": 60.21904119999817,
+    "运行时间秒": 66.89084759999969,
     "统计": {
       "variables": 196419,
       "constraints": 94095,
@@ -42,8 +42,47 @@
     "最坏情景": "HHHSSSSSSS"
   },
   "第四关": {
-    "当前实现": "Gamma=0...6预算接口、完整5x5地图与可证明安全策略下界",
-    "重要边界": "第四关CSV是保底可行下界，不宣称为含村庄/矿山收益的全局最优鲁棒前沿",
+    "当前实现": "Gamma预算鲁棒安全策略、Monte Carlo样本外检验、对照实验与灵敏性分析",
+    "重要边界": "当前策略为可证明安全下界；Monte Carlo验证统计优势，不替代全局最优性证明",
+    "Monte Carlo指标": [
+      {
+        "strategy": "第二问鲁棒决策模型(Gamma=6)",
+        "trials": 10000,
+        "success_count": 9884,
+        "success_rate": 0.9884,
+        "mean_wealth": 7489.813334682315,
+        "minimum_wealth": 6940.0,
+        "q05_wealth": 7250.0,
+        "mean_arrival_day": 10.005564548765681,
+        "mean_regret": 549.8133346823148,
+        "maximum_regret": 1010.0
+      },
+      {
+        "strategy": "第一问已知天气固定方案",
+        "trials": 10000,
+        "success_count": 5687,
+        "success_rate": 0.5687,
+        "mean_wealth": 8127.389660629506,
+        "minimum_wealth": 8020.0,
+        "q05_wealth": 8020.0,
+        "mean_arrival_day": 9.384033761209777,
+        "mean_regret": 107.3896606295059,
+        "maximum_regret": 470.0
+      },
+      {
+        "strategy": "低保护简单方案(Gamma=2)",
+        "trials": 10000,
+        "success_count": 6638,
+        "success_rate": 0.6638,
+        "mean_wealth": 7850.8609520940045,
+        "minimum_wealth": 7540.0,
+        "q05_wealth": 7695.0,
+        "mean_arrival_day": 9.172491714371798,
+        "mean_regret": 310.86095209400423,
+        "maximum_regret": 710.0
+      }
+    ],
+    "与第一问对比结论": "鲁棒方案成功率98.84%，第一问固定方案成功率56.87%；前者以一定保守成本换取未知天气下更高可行性",
     "Gamma安全下界": [
       {
         "Gamma": 0,
