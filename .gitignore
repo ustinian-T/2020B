@@ -6,6 +6,7 @@ __pycache__/
 ~$*
 .DS_Store
 node_modules/
+.worktrees/
 
 # 测试代码：保留在本地用于复算，但不入库
 求解代码/**/tests/
