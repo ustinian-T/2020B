@@ -50,7 +50,7 @@
       },
       "求解状态": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
       "全局最优": true,
-      "运行时间秒": 9.478331,
+      "运行时间秒": 9.600782,
       "统计": {
         "variables": 5012,
         "constraints": 1924,
@@ -363,7 +363,7 @@
       },
       "求解状态": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
       "全局最优": true,
-      "运行时间秒": 21.705334,
+      "运行时间秒": 22.749715,
       "统计": {
         "variables": 13779,
         "constraints": 4144,

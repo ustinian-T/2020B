@@ -1,3 +1,9 @@
+"""官方参数、天气序列与两关地图的无向图封装。
+
+地图拓扑与功能节点来自题目附件；邻接按"公共边界"建立
+（仅共享顶点不连边），详见报告 5.1 节。
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
