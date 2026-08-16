@@ -76,21 +76,40 @@ MATLAB 增强版图表脚本位于 `求解代码/第一问/图表生成代码/`�
 
 ## LaTeX 论文排版
 
-论文模板在 `latex/2020B.tex`，使用全国大学生数学建模竞赛官方文档类 `cumcmthesis`。该文档类**不是** TeX Live / MiKTeX 自带的，但已随仓库提供（`latex/cumcmthesis.cls`），clone 后即可编译，无需额外下载。
+论文模板在 `latex/2020B.tex`，使用全国大学生数学建模竞赛官方文档类 `cumcmthesis`。该文档类**不是** TeX Live / MiKTeX 自带的，但已随仓库提供（`latex/cumcmthesis.cls` + `latex/.latexmkrc`），clone 后即可编译，无需额外下载或 IDE 设置。
 
 ### 环境要求
 
-- **编译引擎**：必须用 XeLaTeX，不能用 pdflatex（`cls` 内有 `\RequireXeTeX` 强制检查）。
+- **编译引擎**：必须用 XeLaTeX，不能用 pdflatex（`cls` 内有 `\RequireXeTeX` 强制检查，`pdflatex` 会立刻终止）。
 - **文档类**：`latex/cumcmthesis.cls` 与 `2020B.tex` 同级，LaTeX 会优先从当前目录读取，无需安装到系统。该文件来自竞赛官方 LaTeX 模板（cumcmthesis v2.6），升级模板时可自行覆盖。
 - **中文字体**：`cls` 内写死 Times New Roman、Arial 以及宋体（SimSun）、楷体（simkai.ttf）、黑体等字体；Windows 全部自带，macOS / Linux 需安装对应中文字体，或在 `cls` 中改用 Fandol 等开源字体。
 
 ### 编译命令
 
+项目根已经在 `latex/.latexmkrc` 中把所有 latexmk 触发统一改写到 xelatex（包括 IDE 默认的 `-pdf` 调用），所以下列任何一种都能成功：
+
 ```bash
 cd latex
+
+# 推荐：什么都不用记
+latexmk 2020B.tex
+
+# IDE 默认（TeXstudio / VS Code LaTeX Workshop）带 -pdf 也能用
+latexmk -synctex=1 -interaction=nonstopmode -file-line-error -pdf -outdir=. 2020B.tex
+
+# 想完全显式指定
 latexmk -xelatex 2020B.tex
-# 或手动编译（交叉引用/目录需跑两遍）
-xelatex 2020B.tex
+
+# 完全脱离 latexmk
+xelatex -synctex=1 -interaction=nonstopmode 2020B.tex
 ```
 
-`*.aux`、`*.log` 等编译产物已在 `.gitignore` 中忽略，无需提交。
+`*.aux`、`*.log`、`*.fdb_latexmk`、`*.fls`、`*.synctex.gz`、`*.xdv` 等编译产物已在仓库根 `.gitignore` 中忽略，IDE 反复构建不会脏仓库。
+
+### 如何在 IDE 中配置
+
+- **TeXstudio** → Options → Configure TeXstudio → Commands → "Build & View"，把命令从默认的 `latexmk -synctex=1 -interaction=nonstopmode -file-line-error -pdf` 改成 `latexmk -synctex=1 -interaction=nonstopmode -file-line-error -xelatex`（或者直接 `latexmk 2020B.tex`，由项目内的 `.latexmkrc` 替你接管）。
+- **VS Code LaTeX Workshop** → settings.json 中把 `latex-workshop.latex.recipe.default` 指向 `latexmk (xelatex)` 这一条预置，或显式写 `"args": ["-xelatex"]`。
+- 也可以**完全不改 IDE**：因为 `.latexmkrc` 已经把 pdflatex 调用偷偷换成 xelatex，IDE 默认 `-pdf` 命令也能跑通（上表第 2 行已实测）。
+
+如果仍然看到 `* XeTeX is required to compile this document. * Sorry!`，说明你的 latexmk 没读到这个 `.latexmkrc`，常见原因：项目被以绝对路径调用且 `latex/` 不在当前目录，或 TeX Live 自带的系统级 `latexmkrc` 先读到。补一条 `latexmk -xelatex 2020B.tex` 强制指定即可绕开。

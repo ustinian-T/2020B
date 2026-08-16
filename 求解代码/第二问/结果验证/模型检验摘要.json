@@ -1,0 +1,33 @@
+{
+  "第三关": {
+    "scenario_count": 1024,
+    "success_count": 1024,
+    "failure_count": 0,
+    "worst_wealth": 9190.0,
+    "mean_wealth": 9310.0,
+    "q05_wealth": 9190.0,
+    "minimum_regret": 0.0,
+    "mean_regret": 134.453125,
+    "median_regret": 145.0,
+    "maximum_regret": 240.0,
+    "arrival_distribution": {
+      "3": 1024
+    },
+    "nonanticipativity_ok": true,
+    "rule_check_ok": true
+  },
+  "第四关": {
+    "检验性质": "预算语义与最短路安全下界压力检验，不代表全局最优性检验",
+    "Gamma检验范围": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "全部压力情景通过": true,
+    "压力情景构造": "Gamma个沙暴前置，随后全部高温完成最短路移动"
+  }
+}
