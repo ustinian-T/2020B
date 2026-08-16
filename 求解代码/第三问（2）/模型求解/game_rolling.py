@@ -10,7 +10,7 @@ import numpy as np
 from scipy.optimize import minimize
 
 from .config import GameConfig, LevelConfig
-from .robust_value import robust_value
+from .robust_value import plan_initial_purchase, robust_value
 from .transition import Action, PlayerState, legal_actions, step_joint, terminal_wealth
 
 
@@ -32,6 +32,35 @@ class StageEquilibrium:
     mixed_probabilities: tuple[tuple[float, ...], ...]
     action_sets: tuple[tuple[Action, ...], ...]
     payoff_rows: tuple[tuple[tuple[Action, ...], tuple[float, ...]], ...]
+
+
+@dataclass(frozen=True)
+class RollingDay:
+    day: int
+    weather: str
+    states_before: tuple[PlayerState, ...]
+    actions: tuple[Action, ...]
+    states_after: tuple[PlayerState, ...]
+    equilibrium: StageEquilibrium
+    edge_counts: tuple[tuple[tuple[int, int], int], ...]
+    mine_counts: tuple[tuple[int, int], ...]
+    village_counts: tuple[tuple[int, int], ...]
+    multipliers: tuple[int, ...]
+    water_consumption: tuple[int, ...]
+    food_consumption: tuple[int, ...]
+    purchase_cost: tuple[float, ...]
+    mine_income: tuple[float, ...]
+
+
+@dataclass(frozen=True)
+class RollingSimulation:
+    gamma: int
+    initial_states: tuple[PlayerState, ...]
+    days: tuple[RollingDay, ...]
+    final_states: tuple[PlayerState, ...]
+    success: bool
+    terminal_wealths: tuple[float | None, ...]
+    failure_reason: str = ""
 
 
 def _distance(level: LevelConfig, start: int, goal: int) -> int:
@@ -306,4 +335,75 @@ def choose_actions(
         probabilities,
         action_sets,
         payoff_rows,
+    )
+
+
+def rolling_simulation(
+    weather_sequence: Sequence[str],
+    gamma: int,
+    config: RollingConfig,
+    initial_states: Sequence[PlayerState] | None = None,
+) -> RollingSimulation:
+    if initial_states is None:
+        initial = plan_initial_purchase(gamma, config.game, config.level).state
+        states = tuple(initial for _ in range(config.game.player_count))
+    else:
+        if len(initial_states) != config.game.player_count:
+            raise ValueError("初始状态数量必须等于玩家数")
+        states = tuple(initial_states)
+    original = states
+    days: list[RollingDay] = []
+    storms_seen = 0
+    failure_reason = ""
+    for day, weather in enumerate(weather_sequence, start=1):
+        if day > config.game.deadline or all(state.arrived for state in states):
+            break
+        if weather == "沙暴":
+            storms_seen += 1
+        gamma_remaining = max(0, gamma - storms_seen)
+        equilibrium = choose_actions(
+            day, weather, states, gamma_remaining, config
+        )
+        try:
+            transition = step_joint(
+                states, equilibrium.actions, weather, config.game, config.level
+            )
+        except ValueError as exc:
+            failure_reason = f"第{day}天：{exc}"
+            break
+        next_states = transition.states
+        days.append(
+            RollingDay(
+                day=day,
+                weather=weather,
+                states_before=states,
+                actions=equilibrium.actions,
+                states_after=next_states,
+                equilibrium=equilibrium,
+                edge_counts=tuple(sorted(transition.edge_counts.items())),
+                mine_counts=tuple(sorted(transition.mine_counts.items())),
+                village_counts=tuple(sorted(transition.village_counts.items())),
+                multipliers=transition.multipliers,
+                water_consumption=transition.water_consumption,
+                food_consumption=transition.food_consumption,
+                purchase_cost=transition.purchase_cost,
+                mine_income=transition.mine_income,
+            )
+        )
+        states = next_states
+    success = all(state.arrived for state in states)
+    if not success and not failure_reason and len(weather_sequence) >= config.game.deadline:
+        failure_reason = "截止日前未全部到达终点"
+    wealths = tuple(
+        terminal_wealth(state, config.game) if state.arrived else None
+        for state in states
+    )
+    return RollingSimulation(
+        gamma=gamma,
+        initial_states=original,
+        days=tuple(days),
+        final_states=states,
+        success=success,
+        terminal_wealths=wealths,
+        failure_reason=failure_reason,
     )
