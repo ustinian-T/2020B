@@ -1,0 +1,451 @@
+\documentclass{cumcmthesis}
+
+
+
+\usepackage[framemethod=TikZ]{mdframed}
+\usepackage{url}   % 网页链接
+\usepackage{subcaption} % 子标题
+\title{基于模型的问题研究}
+\tihao{A}
+\baominghao{xxxx}
+\schoolname{XX大学}
+\membera{ }
+\memberb{ }
+\memberc{ }
+\supervisor{ }
+\yearinput{2025}
+\monthinput{09}
+\dayinput{04}
+
+\begin{document}
+
+% \maketitle
+\makeatletter 
+\begin{center}
+    {\huge \bfseries \@title}
+\end{center}
+
+ \begin{abstract}
+当今世界，智能装备的发展日新月异。在智能装备的导航与定位任务中，仅依靠单一传感器已经难以满足复杂场景的需要。因此，多源异构传感器组合定位方案成为研究热点。本文针对题目所给出的两类核心定位数据，系统研究了多源异构定位数据的融合方法以及在此基础上的任务规划问题，递进式地解决了从理想无噪声场景到实际含噪声场景下的时间对齐、系统偏差校正与高精度轨迹重建难题。
+
+针对问题一，本文建立了基于机器人SLAM领域的连续时间因子图的全局优化模型，创新性地引入连续时间线性插值观测因子，避免了传统离散时间方法中的“伪收敛”问题，并通过多相插值滤波技术解决10Hz无失真升频问题，结合运动平滑残差构建最大后验估计目标函数。通过交替优化策略与稀疏线性子求解问题，
+实现了时间偏差与10Hz轨迹的端到端全局最优估计，彻底消除了分步法的累计误差，验证结果显示重投影精度达机器零量级。
+
+针对问题二，本文在问题一的基础上构建了扩展因子图全局联合优化模型，将固定SE(2)系统偏差（旋转角与二维平移量）增广为待估计变量，引入基于噪声协方差的高斯加权观测模型与Huber鲁棒核函数，以抑制异常观测干扰。同时，增设跨传感器速度/加速度一致性约束和轨迹自身运动学正则项，保证了融合轨迹的动力学合理性。采用“速度相关网格搜索 + Trimmed ICP”策略为时间偏差和系统偏差提供高精度初值，随后进行多轮交替优化求解。求解得两种定位方式间的固定时间偏差为 5.3525秒，系统偏差参数为：旋转角 0.5402弧度、X方向平移 -2.3543米、Y方向平移 -4.8467米，并据此生成了高精度的10Hz融合轨迹。模型验证表明，融合轨迹的运动学特性曲线平滑连续，残差分布近似正态且无系统性偏差。
+% \begin{mdframed} [%
+% 	roundcorner=5pt,
+% 	linecolor=gray!50,
+% 	outerlinewidth=0.5pt,
+% 	middlelinewidth=0.3pt, backgroundcolor=gray!2,
+% innertopmargin=\topskip, frametitle={建模比赛格式变化说明},
+% frametitlefont= \bfseries,frametitlerule=true,frametitlealignment =\raggedright\noindent,
+% frametitlerulewidth=.5pt, frametitlebackgroundcolor=gray!2,]
+% 今年的格式变化主要就是三个地方，如下：
+% \begin{enumerate}
+% \item 论文第一页为承诺书，\textbf{\color{red}内容进行了调整}。
+
+% \item 编号页格式进行了格式调整。
+
+% \item 这是19年调整了，这里延续说明下。论文正文（\textbf{\color{red}不要目录}，尽量控制在20页以内）；正文之后是论文附录（页数不限）。
+
+% \end{enumerate}
+
+% \end{mdframed}
+
+% \uwave{关注我们的微信公众号}：
+
+% \centerline{\includegraphics[width=6cm]{gongzhonghao2}}
+
+\keywords{\TeX{}\quad  图片\quad   表格\quad  公式}
+\end{abstract}
+
+%目录  2019 明确不要目录，我觉得这个规定太好了
+%\tableofcontents
+
+%\newpage
+
+\section{问题重述}
+
+在自主移动机器人、无人车等智能装备的导航与定位任务中，单一传感器定位方式易受环境干扰与自身硬件限制，通常采用多源异构传感器组合定位方案以满足实际场景需要。
+本题给出机器人实际定位场景中相关定位数据：定位方式1（输出频率4Hz，采样周期0.25s）与定位方式2（输出频率5Hz，采样周期0.2s）。两类数据由不同采集设备获取，存在起始时间不同步、采样频率不同、数据含随机噪声等问题。直接融合将导致位置信息错位、轨迹失真，无法输出高频率、高精度的连续定位结果。
+此外，机器人需沿轨迹运动并对沿途目标点执行“模拟射击”或“拍照扫描”任务，任务执行受距离、速度、加速度等多种运动学约束限制。
+
+针对问题一，依据附件所给定数据，
+\begin{itemize}
+    \item Mac 下可以使用 Mac\TeX{}
+    \item Linux 下可以使用 \TeX{}Live ；
+    \item windows 下可以使用 \TeX{}Live 或者 Mik\TeX{} ;
+\end{itemize}
+
+具体安装可以参考 \href{https://github.com/OsbertWang/install-latex-guide-zh-cn/releases/}{Install-LaTeX-Guide-zh-cn} 或者其它靠谱的文章。另外可以安装一个易用的编辑器，例如 \href{https://mirrors.tuna.tsinghua.edu.cn/github-release/texstudio-org/texstudio/LatestRelease/}{\TeX{}studio} 。
+
+使用该模板前，请阅读模板的使用说明文档。下面给出模板使用的大概样式。
+
+\begin{tcode}
+    \documentclass{cumcmthesis}
+    %\documentclass[withoutpreface,bwprint]{cumcmthesis} %去掉封面与编号页
+
+    \title{论文题目}
+    \tihao{A}            % 题号
+    \baominghao{4321}    % 报名号
+    \schoolname{你的大学}
+    \membera{成员A}
+    \memberb{成员B}
+    \memberc{成员C}
+    \supervisor{指导老师}
+    \yearinput{2017}     % 年
+    \monthinput{08}      % 月
+    \dayinput{22}        % 日
+
+    \begin{document}
+        \maketitle
+        \begin{abstract}
+            摘要的具体内容。
+            \keywords{关键词1\quad  关键词2\quad   关键词3}
+        \end{abstract}
+        \tableofcontents
+        \section{问题重述}
+        \subsection{问题的提出}
+        \section{模型的假设}
+        \section{符号说明}
+        \begin{center}
+            \begin{tabular}{cc}
+                \hline
+                \makebox[0.3\textwidth][c]{符号}	&  \makebox[0.4\textwidth][c]{意义} \\ \hline
+                D	    & 木条宽度（cm） \\ \hline
+            \end{tabular}
+        \end{center}
+        \section{问题分析}
+        \section{总结}
+        \begin{thebibliography}{9}%宽度9
+            \bibitem{bib:one} ....
+        \end{thebibliography}
+        \begin{appendices}
+            附录的内容。
+        \end{appendices}
+    \end{document}
+\end{tcode}
+\section{问题重述}
+        \subsection{问题的提出}
+\section{模型的假设}
+\section{符号说明}
+根据要求，电子版论文提交时需去掉封面和编号页。可以加上 \verb|withoutpreface|  选项来实现，即：
+\begin{tcode}
+    \documentclass[withoutpreface]{cumcmthesis}
+\end{tcode}
+这样就能实现了。打印的时候有超链接的地方不需要彩色，可以加上 \verb|bwprint| 选项。
+
+另外目录也是不需要的，将 \verb|\tableofcontents| 注释或删除，目录就不会出现了。
+
+团队的信息填入指定的位置，并且确保信息的正确性，以免因此白忙一场。
+
+编译记得使用 \verb|xelatex|，而不是用 \verb|pdflatex|。在命令行编译的可以按如下方式编译：
+\begin{tcode}
+	xelatex example
+\end{tcode}
+或者使用 \verb|latexmk| 来编译，更推荐这种方式。
+\begin{tcode}
+	latexmk -xelatex example
+\end{tcode}
+
+下面给出写作与排版上的一些建议。
+
+\section{绘制普通三线表格}
+表格应具有三线表格式，因此常用 booktabs宏包，其标准格式如\cref{tab:001}~所示。
+\begin{table}[!htbp]
+    \caption{标准三线表格}\label{tab:001} \centering
+    \begin{tabular}{ccccc}
+        \toprule[1.5pt]
+        $D$(in) & $P_u$(lbs) & $u_u$(in) & $\beta$ & $G_f$(psi.in)\\
+        \midrule[1pt]
+        5 & 269.8 & 0.000674 & 1.79 & 0.04089\\
+        10 & 421.0 & 0.001035 & 3.59 & 0.04089\\
+        20 & 640.2 & 0.001565 & 7.18 & 0.04089\\
+        \bottomrule[1.5pt]
+    \end{tabular}
+\end{table}
+
+其绘制表格的代码及其说明如下。
+\begin{tcode}
+    \begin{table}[!htbp]
+        \caption[标签名]{中文标题}
+        \begin{tabular}{cc...c}
+            \toprule[1.5pt]
+            表头第1个格   & 表头第2个格   & ... & 表头第n个格  \\
+            \midrule[1pt]
+            表中数据(1,1) & 表中数据(1,2) & ... & 表中数据(1,n)\\
+            表中数据(2,1) & 表中数据(2,2) & ... & 表中数据(2,n)\\
+            ...................................................\\
+            表中数据(m,1) & 表中数据(m,2) & ... & 表中数据(m,n)\\
+            \bottomrule[1.5pt]
+        \end{tabular}
+    \end{table}
+\end{tcode}
+
+\bigskip
+
+table环境是一个将表格嵌入文本的浮动环境。tabular环境的必选参数由每列对应一个格式字符所组成：c表示居中，l表示左对齐，r表示右对齐，其总个数应与表的列数相同。此外，\verb|@{文本}|可以出现在任意两个上述的列格式之间，其中的文本将被插入每一行的同一位置。表格的各行以\verb|\\|分隔，同一行的各列则以\&分隔。 \verb|\toprule| 、\verb|\midrule| 和 \verb|\bottomrule| 三个命令是由booktabs宏包提供的，其中 \verb|\toprule| 和 \verb|\bottomrule| 分别用来绘制表格的第一条（表格最顶部）和第三条（表格最底部）水平线， \verb|\midrule| 用来绘制第二条（表头之下）水平线，且第一条和第三条水平线的线宽为 1.5pt ，第二条水平线的线宽为 1pt 。引用方法与图片的相同。
+
+\section{公式}
+
+数学建模必然涉及不少数学公式的使用。下面简单介绍一个可能用得上的数学环境。
+
+首先是行内公式，例如 $ \theta $ 是角度。行内公式使用 \verb|$  $| 包裹。
+
+行间公式不需要编号的可以使用 \verb|\[  \]| 包裹，例如
+\[
+E_1=mc^2
+\]
+其中 $ E $ 是能量，$ m $ 是质量，$ c $ 是光速。
+
+如果希望某个公式带编号，并且在后文中引用可以参考下面的写法：
+\begin{equation}
+E=mc^2
+\label{eq:energy}
+\end{equation}
+式\cref{eq:energy}是质能方程。
+
+多行公式有时候希望能够在特定的位置对齐，以下是其中一种处理方法。
+\begin{align}
+P & = UI \\
+& = I^2R
+\end{align}
+\verb|&| 是对齐的位置， \verb|&| 可以有多个，但是每行的个数要相同。
+
+矩阵的输入也不难。
+\[
+\mathbf{X} = \left(
+    \begin{array}{cccc}
+    x_{11} & x_{12} & \ldots & x_{1n}\\
+    x_{21} & x_{22} & \ldots & x_{2n}\\
+    \vdots & \vdots & \ddots & \vdots\\
+    x_{n1} & x_{n2} & \ldots & x_{nn}\\
+    \end{array} \right)
+\]
+
+分段函数这些可以用 \verb|case| 环境，但是它要放在数学环境里面。
+\[
+f(x) =
+    \begin{cases}
+        0 &  x \text{为无理数} ,\\
+        1 &  x \text{为有理数} .
+    \end{cases}
+\]
+在数学环境里面，字体用的是数学字体，一般与正文字体不同。假如要公式里面有个别文字，则需要把这部分放在 \verb|text| 环境里面，即 \verb|\text{文本环境}| 。
+
+公式中个别需要加粗的字母可以用 \verb|$\bm{math symbol}$| 。如 $ \alpha a\bm{\alpha a} $ 。
+
+以上仅简单介绍了基础的使用，对于更复杂的需求，可以阅读相关的宏包手册，如 \href{http://texdoc.net/texmf-dist/doc/latex/amsmath/amsldoc.pdf}{amsmath}。
+
+希腊字母这些如果不熟悉，可以去查找符号文件 \href{http://mirrors.ctan.org/info/symbols/comprehensive/symbols-a4.pdf}{symbols-a4.pdf} ，也可以去 \href{http://detexify.kirelabs.org/classify.html}{detexify} 网站手写识别。另外还有数学公式识别软件 \href{https://mathpix.com/}{mathpix} 。
+
+下面简单介绍一下定理、证明等环境的使用。
+\begin{definition}
+    定义环境
+    \label{def:nosense}
+\end{definition}
+\cref{def:nosense}除了告诉你怎么使用这个环境以外，没有什么其它的意义。
+
+除了 definition 环境，还可以使用 theorem 、lemma、corollary、assumption、conjecture、axiom、principle、problem、example、proof、solution 这些环境，根据论文的实际需求合理使用。
+
+\begin{theorem}
+    这是一个定理。
+    \label{thm:example}
+\end{theorem}
+由\cref{thm:example}我们知道了定理环境的使用。
+
+\begin{lemma}
+    这是一个引理。
+    \label{lem:example}
+\end{lemma}
+由\cref{lem:example}我们知道了引理环境的使用。
+
+\begin{corollary}
+    这是一个推论。
+    \label{cor:example}
+\end{corollary}
+由\cref{cor:example}我们知道了推论环境的使用。
+
+\begin{assumption}
+    这是一个假设。
+    \label{asu:example}
+\end{assumption}
+由\cref{asu:example}我们知道了假设环境的使用。
+
+\begin{conjecture}
+    这是一个猜想。
+    \label{con:example}
+\end{conjecture}
+由\cref{con:example}我们知道了猜想环境的使用。
+
+\begin{axiom}
+    这是一个公理。
+    \label{axi:example}
+\end{axiom}
+由\cref{axi:example}我们知道了公理环境的使用。
+
+\begin{principle}
+    这是一个定律。
+    \label{pri:example}
+\end{principle}
+由\cref{pri:example}我们知道了定律环境的使用。
+
+\begin{problem}
+    这是一个问题。
+    \label{pro:example}
+\end{problem}
+由\cref{pro:example}我们知道了问题环境的使用。
+
+\begin{example}
+    这是一个例子。
+    \label{exa:example}
+\end{example}
+由\cref{exa:example}我们知道了例子环境的使用。
+
+\begin{proof}
+    这是一个证明。
+    \label{prf:example}
+\end{proof}
+由\cref{prf:example}我们知道了证明环境的使用。
+
+\begin{solution}
+    这是一个解。
+    \label{sol:example}
+\end{solution}
+由\cref{sol:example}我们知道了解环境的使用。
+
+
+
+\section{其它小功能}
+\subsection{脚注}
+
+利用 \verb|\footnote{具体内容}| 可以生成脚注\footnote{脚注可以补充说明一些东西}。
+
+\subsection{无序列表与有序列表}
+
+无序列表是这样的：
+\begin{itemize}
+    \item one
+    \item two
+    \item ...
+\end{itemize}
+
+有序列表是这样子的：
+\begin{enumerate}
+    \item one
+    \item two
+    \item ...
+\end{enumerate}
+
+\subsection{字体加粗与斜体}
+
+如果想强调部分内容，可以使用加粗的手段来实现。加粗字体可以用 \verb|\textbf{加粗}| 来实现。例如： \textbf{这是加粗的字体。 This is bold fonts} 。
+
+中文字体没有斜体设计，但是英文字体有。\textit{斜体 Italics}。
+
+\section{参考文献与引用}
+
+参考文献对于一篇正式的论文来说是必不可少的，在建模中重要的参考文献当然应该列出。\LaTeX{}在这方面的功能也是十分强大的，下面进介绍一个比较简单的参考文献制作方法。有兴趣的可以学习 \verb|bibtex| 或 \verb|biblatex| 的使用。
+
+\LaTeX{}的入门书籍可以看《\LaTeX{}入门》\cite{liuhaiyang2013latex}。这是一个简单的引用，用 \verb|\cite{bibkey}| 来完成。要引用成功，当然要维护好 bibitem 了。下面是个简单的例子。
+
+
+
+%参考文献
+\begin{thebibliography}{9}%宽度9
+    \bibitem[1]{liuhaiyang2013latex}
+    刘海洋.
+    \newblock \LaTeX {}入门\allowbreak[J].
+    \newblock 电子工业出版社, 北京, 2013.
+    \bibitem[2]{mathematical-modeling}
+    全国大学生数学建模竞赛论文格式规范 (2020 年 8 月 25 日修改).
+\end{thebibliography}
+
+\newpage
+%附录
+\begin{appendices}
+
+\section{模板所用的宏包}
+\begin{table}[htbp]
+    \centering
+    \caption{宏包罗列}
+    \begin{tabular}{ccccc}
+        \toprule
+        \multicolumn{5}{c}{模板中已经加载的宏包} \\
+        \midrule
+        amsbsy & amsfonts & {amsgen} & {amsmath} & {amsopn} \\
+        amssymb & amstext & {appendix} & {array} & {atbegshi} \\
+        atveryend & auxhook & {bigdelim} & {bigintcalc} & {bigstrut} \\
+        bitset & bm    & {booktabs} & {calc} & {caption} \\
+        caption3 & CJKfntef & {cprotect} & {ctex} & {ctexhook} \\
+        ctexpatch & enumitem & {etexcmds} & {etoolbox} & {everysel} \\
+        expl3 & fix-cm & {fontenc} & {fontspec} & {fontspec-xetex} \\
+        geometry & gettitlestring & {graphics} & {graphicx} & {hobsub} \\
+        hobsub-generic & hobsub-hyperref & {hopatch} & {hxetex} & {hycolor} \\
+        hyperref & ifluatex & {ifpdf} & {ifthen} & {ifvtex} \\
+        ifxetex & indentfirst & {infwarerr} & {intcalc} & {keyval} \\
+        kvdefinekeys & kvoptions & {kvsetkeys} & {l3keys2e} & {letltxmacro} \\
+        listings & longtable & {lstmisc} & {ltcaption} & {ltxcmds} \\
+        multirow & nameref & {pdfescape} & {pdftexcmds} & {refcount} \\
+        rerunfilecheck & stringenc & {suffix} & {titletoc} & {tocloft} \\
+        trig  & ulem  & {uniquecounter} & {url} & {xcolor} \\
+        xcolor-patch & xeCJK & {xeCJKfntef} & {xeCJK-listings} & {xparse} \\
+        xtemplate & zhnumber &       &       &  \\
+        \bottomrule
+    \end{tabular}%
+    \label{tab:addlabel}%
+\end{table}%
+
+以上宏包都已经加载过了，不要重复加载它们。
+
+\section{排队算法--matlab 源程序}
+
+\begin{lstlisting}[language=matlab]
+kk=2;[mdd,ndd]=size(dd);
+while ~isempty(V)
+[tmpd,j]=min(W(i,V));tmpj=V(j);
+for k=2:ndd
+[tmp1,jj]=min(dd(1,k)+W(dd(2,k),V));
+tmp2=V(jj);tt(k-1,:)=[tmp1,tmp2,jj];
+end
+tmp=[tmpd,tmpj,j;tt];[tmp3,tmp4]=min(tmp(:,1));
+if tmp3==tmpd, ss(1:2,kk)=[i;tmp(tmp4,2)];
+else,tmp5=find(ss(:,tmp4)~=0);tmp6=length(tmp5);
+if dd(2,tmp4)==ss(tmp6,tmp4)
+ss(1:tmp6+1,kk)=[ss(tmp5,tmp4);tmp(tmp4,2)];
+else, ss(1:3,kk)=[i;dd(2,tmp4);tmp(tmp4,2)];
+end;end
+dd=[dd,[tmp3;tmp(tmp4,2)]];V(tmp(tmp4,3))=[];
+[mdd,ndd]=size(dd);kk=kk+1;
+end; S=ss; D=dd(1,:);
+ \end{lstlisting}
+
+ \section{规划解决程序--lingo源代码}
+
+\begin{lstlisting}[language=c]
+kk=2;
+[mdd,ndd]=size(dd);
+while ~isempty(V)
+    [tmpd,j]=min(W(i,V));tmpj=V(j);
+for k=2:ndd
+    [tmp1,jj]=min(dd(1,k)+W(dd(2,k),V));
+    tmp2=V(jj);tt(k-1,:)=[tmp1,tmp2,jj];
+end
+    tmp=[tmpd,tmpj,j;tt];[tmp3,tmp4]=min(tmp(:,1));
+if tmp3==tmpd, ss(1:2,kk)=[i;tmp(tmp4,2)];
+else,tmp5=find(ss(:,tmp4)~=0);tmp6=length(tmp5);
+if dd(2,tmp4)==ss(tmp6,tmp4)
+    ss(1:tmp6+1,kk)=[ss(tmp5,tmp4);tmp(tmp4,2)];
+else, ss(1:3,kk)=[i;dd(2,tmp4);tmp(tmp4,2)];
+end;
+end
+    dd=[dd,[tmp3;tmp(tmp4,2)]];V(tmp(tmp4,3))=[];
+    [mdd,ndd]=size(dd);
+    kk=kk+1;
+end;
+S=ss;
+D=dd(1,:);
+ \end{lstlisting}
+\end{appendices}
+
+\end{document} 

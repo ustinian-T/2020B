@@ -33,3 +33,24 @@ python "生成求解报告.py"
 ```
 
 后三条命令请在 `求解代码/第一问` 目录下执行。结果表导出脚本依赖本项目使用的文档/表格运行时，常规复算只需读取 CSV 与 JSON 输出。
+
+## LaTeX 论文排版
+
+论文模板在 `latex/2020B.tex`，使用全国大学生数学建模竞赛官方文档类 `cumcmthesis`。该文档类**不是** TeX Live / MiKTeX 自带的，但已随仓库提供（`latex/cumcmthesis.cls`），clone 后即可编译，无需额外下载。
+
+### 环境要求
+
+- **编译引擎**：必须用 XeLaTeX，不能用 pdflatex（`cls` 内有 `\RequireXeTeX` 强制检查）。
+- **文档类**：`latex/cumcmthesis.cls` 与 `2020B.tex` 同级，LaTeX 会优先从当前目录读取，无需安装到系统。该文件来自竞赛官方 LaTeX 模板（cumcmthesis v2.6），升级模板时可自行覆盖。
+- **中文字体**：`cls` 内写死 Times New Roman、Arial 以及宋体（SimSun）、楷体（simkai.ttf）、黑体等字体；Windows 全部自带，macOS / Linux 需安装对应中文字体，或在 `cls` 中改用 Fandol 等开源字体。
+
+### 编译命令
+
+```bash
+cd latex
+latexmk -xelatex 2020B.tex
+# 或手动编译（交叉引用/目录需跑两遍）
+xelatex 2020B.tex
+```
+
+`*.aux`、`*.log` 等编译产物已在 `.gitignore` 中忽略，无需提交。
