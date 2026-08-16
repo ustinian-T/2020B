@@ -7,6 +7,9 @@ __pycache__/
 .DS_Store
 node_modules/
 
+# 测试代码：保留在本地用于复算，但不入库
+求解代码/**/tests/
+
 # LaTeX 编译产物
 *.aux
 *.lof

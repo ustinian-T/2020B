@@ -3,7 +3,7 @@
 ## 运行校验
 
 - MATLAB 环境：R2023b。
-- 生成脚本：`src/matlab/generate_q1_figures_enhanced.m`。
+- 生成脚本：`求解代码/第一问/图表生成代码/generate_q1_figures_enhanced.m`。
 - 批量运行结果：正常退出，五张图片全部生成。
 - 数据断言：第一关25条记录、第二关31条记录；终端财富分别为10470元和12730元；四项终点水食库存均为0。
 

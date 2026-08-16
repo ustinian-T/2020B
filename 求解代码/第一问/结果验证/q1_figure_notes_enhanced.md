@@ -4,9 +4,9 @@
 
 - 逐日策略：`求解代码/第一问/结果输出/第一关逐日策略.csv`、`第二关逐日策略.csv`
 - 灵敏性结果：`求解代码/第一问/结果输出/灵敏性分析.csv`
-- MATLAB 代码：`src/matlab/generate_q1_figures_enhanced.m`
-- 增强图目录：`figures_enhanced`
-- 样式追踪表：`tables/tab_q1_figure_style_tracking_enhanced.csv`
+- MATLAB 代码：`求解代码/第一问/图表生成代码/generate_q1_figures_enhanced.m`
+- 增强图目录：`求解代码/第一问/figures_enhanced/`
+- 样式追踪表：`求解代码/第一问/样式追踪表/tab_q1_figure_style_tracking_enhanced.csv`
 
 脚本在绘图前断言两关记录数、终端财富和终点库存。图内所有数值均来自 CSV；比例图只以第0天库存和1200千克负重上限作确定性换算。
 

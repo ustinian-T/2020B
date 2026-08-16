@@ -22,9 +22,9 @@ natureColors = [
 ] / 255;
 
 scriptDir = fileparts(mfilename('fullpath'));
-projectRoot = fileparts(fileparts(scriptDir));
+projectRoot = fileparts(fileparts(fileparts(scriptDir)));
 dataDir = fullfile(projectRoot, '求解代码', '第一问', '结果输出');
-figureDir = fullfile(projectRoot, 'figures_enhanced');
+figureDir = fullfile(projectRoot, '求解代码', '第一问', 'figures_enhanced');
 if ~exist(figureDir, 'dir'), mkdir(figureDir); end
 
 T1 = readChineseTable(fullfile(dataDir, '第一关逐日策略.csv'));

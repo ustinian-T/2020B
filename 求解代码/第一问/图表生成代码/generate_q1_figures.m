@@ -28,9 +28,9 @@ natureColors = [
 ] / 255;
 
 scriptDir = fileparts(mfilename('fullpath'));
-projectRoot = fileparts(fileparts(scriptDir));
+projectRoot = fileparts(fileparts(fileparts(scriptDir)));
 dataDir = fullfile(projectRoot, '求解代码', '第一问', '结果输出');
-figureDir = fullfile(projectRoot, 'figures');
+figureDir = fullfile(projectRoot, '求解代码', '第一问', 'figures');
 if ~exist(figureDir, 'dir')
     mkdir(figureDir);
 end

@@ -5,8 +5,8 @@
 - 唯一上游来源：`https://github.com/ustinian-T/2020B`
 - 逐日策略：`求解代码/第一问/结果输出/第一关逐日策略.csv`、`第二关逐日策略.csv`
 - 灵敏性结果：`求解代码/第一问/结果输出/灵敏性分析.csv`
-- 完整 MATLAB 代码：`src/matlab/generate_q1_figures.m`
-- 样式追踪表：`tables/tab_q1_figure_style_tracking.csv`
+- 完整 MATLAB 代码：`求解代码/第一问/图表生成代码/generate_q1_figures.m`
+- 样式追踪表：`求解代码/第一问/样式追踪表/tab_q1_figure_style_tracking.csv`
 
 脚本只读取已有 CSV，不模拟天气、不修改策略，也不重新计算最优解。执行前会断言两关记录数、终端财富和终点库存，以防误用旧文件。
 
