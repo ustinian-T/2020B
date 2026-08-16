@@ -5,8 +5,10 @@ from itertools import product
 from typing import Iterable
 
 from .config import GameConfig, LevelConfig
+from .baselines import run_baselines
 from .game_rolling import RollingConfig, rolling_simulation
-from .robust_value import plan_initial_purchase
+from .robust_value import plan_initial_purchase, robust_value
+from .transition import initial_state
 from .validator import audit_simulation, conflict_loss
 
 
@@ -127,6 +129,44 @@ def run_parameter_scan(
     return tuple(rows)
 
 
+def run_initial_purchase_neighborhood(
+    game: GameConfig,
+    level: LevelConfig,
+    gamma: int,
+    radius: int = 2,
+) -> tuple[dict[str, object], ...]:
+    """在推荐初始采购量附近逐箱扰动，检验解对离散采购的稳定性。"""
+    center = plan_initial_purchase(gamma, game, level)
+    rows = []
+    for delta_water in range(-radius, radius + 1):
+        for delta_food in range(-radius, radius + 1):
+            water = center.state.water + delta_water
+            food = center.state.food + delta_food
+            try:
+                state = initial_state(water, food, game, level)
+                value = robust_value(1, state, gamma, game, level)
+                feasible = value.feasible
+                wealth = value.worst_wealth if feasible else None
+                policy = value.policy if feasible else "无鲁棒可行方案"
+            except ValueError:
+                feasible = False
+                wealth = None
+                policy = "初始采购不可行"
+            rows.append(
+                {
+                    "初始水": water,
+                    "初始食物": food,
+                    "水偏移": delta_water,
+                    "食物偏移": delta_food,
+                    "可行": feasible,
+                    "最坏财富下界": wealth,
+                    "策略类别": policy,
+                    "是否推荐点": delta_water == 0 and delta_food == 0,
+                }
+            )
+    return tuple(rows)
+
+
 def summarize_simulation(simulation, config: RollingConfig) -> dict[str, object]:
     audit = audit_simulation(simulation, config)
     loss = conflict_loss(simulation, config.game)
@@ -141,3 +181,91 @@ def summarize_simulation(simulation, config: RollingConfig) -> dict[str, object]
         "最大守恒残差": audit.max_abs_residual,
         "冲突损失": asdict(loss),
     }
+
+
+def _baseline_row(version: str, baseline) -> dict[str, object]:
+    return {
+        "版本": version,
+        "成功": baseline.success,
+        "执行天数": baseline.executed_days,
+        "平均终端财富": baseline.mean_terminal_wealth,
+        "最差终端财富": baseline.minimum_terminal_wealth,
+        "epsilon_max": baseline.epsilon_max,
+        "L_move": baseline.conflict_loss.move,
+        "L_mine": baseline.conflict_loss.mine,
+        "L_village": baseline.conflict_loss.village,
+        "L_conflict": baseline.conflict_loss.total,
+        "失败原因": baseline.failure_reason,
+    }
+
+
+def run_ablation(
+    weather_sequence,
+    gamma: int,
+    config: RollingConfig,
+) -> tuple[dict[str, object], ...]:
+    baselines = {row.name: row for row in run_baselines(weather_sequence, gamma, config)}
+    no_robust = rolling_simulation(weather_sequence, 0, config)
+    no_robust_summary = summarize_simulation(no_robust, config)
+    no_robust_loss = no_robust_summary["冲突损失"]
+    return (
+        _baseline_row("Full", baselines["Full"]),
+        _baseline_row("-Game", baselines["B1"]),
+        _baseline_row("-Rolling", baselines["B0"]),
+        _baseline_row("-FutureValue", baselines["B2"]),
+        {
+            "版本": "-Robust",
+            "成功": no_robust_summary["成功"],
+            "执行天数": no_robust_summary["执行天数"],
+            "平均终端财富": (
+                sum(value for value in no_robust.terminal_wealths if value is not None)
+                / sum(value is not None for value in no_robust.terminal_wealths)
+                if any(value is not None for value in no_robust.terminal_wealths)
+                else None
+            ),
+            "最差终端财富": min(
+                (value for value in no_robust.terminal_wealths if value is not None),
+                default=None,
+            ),
+            "epsilon_max": no_robust_summary["epsilon_max"],
+            "L_move": no_robust_loss["move"],
+            "L_mine": no_robust_loss["mine"],
+            "L_village": no_robust_loss["village"],
+            "L_conflict": no_robust_loss["total"],
+            "失败原因": no_robust.failure_reason,
+        },
+    )
+
+
+def run_player_count_scan(
+    weather_sequence,
+    gamma: int,
+    config: RollingConfig,
+    player_counts: Iterable[int] = (2, 3, 4),
+) -> tuple[dict[str, object], ...]:
+    rows = []
+    for count in player_counts:
+        if count < 1:
+            raise ValueError("玩家数必须为正整数")
+        variant = RollingConfig(
+            replace(config.game, player_count=count),
+            config.level,
+            config.tolerance,
+        )
+        simulation = rolling_simulation(weather_sequence, gamma, variant)
+        summary = summarize_simulation(simulation, variant)
+        loss = summary["冲突损失"]
+        wealths = [value for value in simulation.terminal_wealths if value is not None]
+        rows.append(
+            {
+                "玩家数": count,
+                "推广试验": True,
+                "成功": simulation.success,
+                "平均终端财富": sum(wealths) / len(wealths) if wealths else None,
+                "最差终端财富": min(wealths) if wealths else None,
+                "epsilon_max": summary["epsilon_max"],
+                "L_conflict": loss["total"],
+                "执行天数": len(simulation.days),
+            }
+        )
+    return tuple(rows)
