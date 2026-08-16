@@ -36,13 +36,12 @@
     │   ├── README.md
     │   ├── 建模思路/                          建模推导、问题分析、Bellman/MILP 路线选择
     │   ├── 模型求解/                          Python 求解器、规则、复算器、灵敏性脚本
-    │   ├── 图表生成代码/                      MATLAB 论文图表脚本（基础版 + 增强版）
-    │   ├── figures/                           基础版图表 PNG（与 .tex 引用保留英文名）
+    │   ├── 图表生成代码/                      MATLAB 增强版论文图表脚本
     │   ├── figures_enhanced/                  增强版图表 PNG
-    │   ├── 样式追踪表/                        图表样式使用追踪 CSV
+    │   ├── 样式追踪表/                        增强版图表样式使用追踪 CSV
     │   ├── 结果输出/                          CSV/JSON/Excel 结果（提交中）
     │   ├── 结果验证/                          图表验证报告与图注（Markdown）
-    │   ├── 论文草稿/                          论文图表稿 main.tex / main_enhanced.tex(/.pdf)
+    │   ├── 论文草稿/                          增强版论文图表稿及参考 PDF
     │   ├── 导出结果.mjs                       结果表导出脚本
     │   ├── 生成求解报告.py                    Word 求解报告生成脚本
     │   └── tests/                             本地复算测试目录（不入库，见下）
@@ -53,9 +52,9 @@
 
 **约定说明：**
 
-- **“按问分组”**：每个 `求解代码/<问>/` 自成一个完整单元，包含 `建模思路/`、`模型求解/` 或 `图表生成代码/`、`figures/`、`结果输出/`、`结果验证/`、`论文草稿/` 等子目录。第二、第三问动工后，沿用同一套子目录命名。
+- **“按问分组”**：每个 `求解代码/<问>/` 自成一个完整单元，包含 `建模思路/`、`模型求解/` 或 `图表生成代码/`、`figures_enhanced/`、`结果输出/`、`结果验证/`、`论文草稿/` 等子目录。第二、第三问动工后，沿用同一套子目录命名。
 - **`tests/` 不入库**：求解代码下的 `tests/` 目录保留在本地以便复算，符合“测试代码不上传”的方针，已在 `.gitignore` 中以 `求解代码/**/tests/` 规则屏蔽。
-- **`figures/` 与 `figures_enhanced/` 保留英文目录名**：因为 `paper/main.tex`、`paper/main_enhanced.tex` 用 `\graphicspath{{../figures/}}`、`\graphicspath{{../figures_enhanced/}}` 硬编码相对路径，移动后这两条 `\graphicspath` 仍能正确解析，无需改 LaTeX。
+- **`figures_enhanced/` 保留英文目录名**：增强版 LaTeX 稿使用 `\graphicspath{{../figures_enhanced/}}` 相对路径，MATLAB 脚本也将五张增强版 PNG 统一写入该目录。
 - **Office 临时锁文件 `~$*.docx`**：被 `.gitignore` 忽略，关闭 Word 后会自动消失。
 
 ## 运行方法（第一问）
@@ -73,7 +72,7 @@ python -m 模型求解.sensitivity
 python "生成求解报告.py"
 ```
 
-MATLAB 图表脚本（基础版 + 增强版）位于 `求解代码/第一问/图表生成代码/`，在 MATLAB R2023b 中运行后会将 PNG 写回 `求解代码/第一问/figures/` 与 `求解代码/第一问/figures_enhanced/`。两者均只读取仓库已有 CSV，不会修改模型结果。
+MATLAB 增强版图表脚本位于 `求解代码/第一问/图表生成代码/`，在 MATLAB R2023b 中运行后会将五张 PNG 写回 `求解代码/第一问/figures_enhanced/`。脚本只读取仓库已有 CSV，不会修改模型结果。
 
 ## LaTeX 论文排版
 

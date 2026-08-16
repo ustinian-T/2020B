@@ -27,3 +27,14 @@ python -m pytest 求解代码\第一问\tests -q
 - `run.py`：统一求解两关并生成 JSON/CSV。
 
 结果统一写入 `结果输出/`。公共 `数据/Result.xlsx` 只作为模板，不会原地覆盖。
+
+## 增强版图表
+
+- MATLAB 入口：`图表生成代码/generate_q1_figures_enhanced.m`
+- 图表目录：`figures_enhanced/`
+- 图表说明：`结果验证/q1_figure_notes_enhanced.md`
+- 校验报告：`结果验证/validation_report_enhanced.md`
+- 样式追踪：`样式追踪表/tab_q1_figure_style_tracking_enhanced.csv`
+- 论文草稿：`论文草稿/main_enhanced.tex`
+
+第一问仅维护增强版图表链路，普通版文件不再保留。
