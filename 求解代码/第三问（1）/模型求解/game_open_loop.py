@@ -19,6 +19,8 @@ class EquilibriumResult:
     converged: bool
     cycle_detected: bool
     generated_strategies: tuple[tuple[Plan, ...], ...]
+    mixed_row_probabilities: tuple[float, ...] | None = None
+    mixed_column_probabilities: tuple[float, ...] | None = None
 
 
 @dataclass(frozen=True)
@@ -69,6 +71,7 @@ def find_pure_ne(
     initial_profile: Sequence[Plan] | None = None,
     max_iterations: int = 100,
     tolerance: float = 1e-9,
+    enable_mixed_fallback: bool = True,
 ) -> EquilibriumResult:
     if update_order is None:
         update_order = tuple(range(game.player_count))
@@ -123,13 +126,47 @@ def find_pure_ne(
         if not changed:
             break
 
+    # ---- 手册 §7.6/§11.1：若纯 Nash 不收敛，自动构建受限战略式博弈并求混合 Nash ----
     results = _evaluate_profile(profile, game, level, weather)
     gains = _global_gains(profile, results, game, level, weather)
+    unresolved_epsilon = max(gains, default=float("inf"))
+
+    if (
+        enable_mixed_fallback
+        and game.player_count == 2
+        and generated[0]
+        and generated[1]
+    ):
+        try:
+            mixed = solve_restricted_mixed(
+                tuple(generated[0]),
+                tuple(generated[1]),
+                game,
+                level,
+                weather,
+            )
+            # 混合均衡收益 = 双方在支持策略分布下的期望终端财富
+            return EquilibriumResult(
+                kind="mixed",
+                profile=tuple(profile),
+                player_results=results,
+                exploitability=mixed.restricted_epsilon,
+                iterations=min(max_iterations, len(seen)),
+                converged=True,
+                cycle_detected=cycle,
+                generated_strategies=tuple(tuple(items) for items in generated),
+                mixed_row_probabilities=mixed.row_probabilities,
+                mixed_column_probabilities=mixed.column_probabilities,
+            )
+        except (RuntimeError, ImportError):
+            # 受限集未找到混合均衡或 nashpy 不可用：退回 unresolved
+            pass
+
     return EquilibriumResult(
         kind="unresolved",
         profile=tuple(profile),
         player_results=results,
-        exploitability=max(gains, default=float("inf")),
+        exploitability=unresolved_epsilon,
         iterations=min(max_iterations, len(seen)),
         converged=False,
         cycle_detected=cycle,

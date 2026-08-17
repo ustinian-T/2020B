@@ -20,9 +20,14 @@
     "total": 220.0
   },
   "information_leakage_ok": true,
+  "information_leakage_passed": 30,
+  "information_leakage_total": 30,
   "audit_check_count": 363,
   "audit_violation_count": 0,
   "audit_max_abs_residual": 0,
   "audit_messages": [],
-  "failure_reason": ""
+  "failure_reason": "",
+  "resample_n_samples": 30,
+  "resample_success_rate": 0.9666666666666667,
+  "resample_mean_wealth": 7957.701149425287
 }

@@ -200,7 +200,51 @@ def _mixed_equilibrium(
     payoffs: Mapping[tuple[Action, ...], tuple[float, ...]],
     tolerance: float,
 ) -> tuple[tuple[tuple[float, ...], ...], tuple[float, ...], float]:
+    """阶段博弈混合均衡求解。
+
+    求解路径优先级（与手册 §8.6 / §11.2 一致）：
+    1. 两人博弈：先尝试 nashpy 支持枚举 / Lemke-Howson（解析保证）；
+    2. 失败或非两人博弈：退回基于 regret minimization 的 SLSQP 数值优化。
+
+    返回：(每玩家概率分布, 每玩家期望收益, exploitability epsilon)
+    """
     sizes = [len(actions) for actions in action_sets]
+
+    # ---- 路径 1：nashpy（仅两人博弈）----
+    if len(sizes) == 2 and max(sizes) <= 16:
+        try:
+            import nashpy as nash
+
+            row_actions, col_actions = action_sets
+            row_payoff = np.empty((sizes[0], sizes[1]))
+            col_payoff = np.empty_like(row_payoff)
+            for joint, values in payoffs.items():
+                r = row_actions.index(joint[0])
+                c = col_actions.index(joint[1])
+                rv = -1e12 if values[0] == -inf else values[0]
+                cv = -1e12 if values[1] == -inf else values[1]
+                row_payoff[r, c] = rv
+                col_payoff[r, c] = cv
+            game = nash.Game(row_payoff, col_payoff)
+            for equilibria in (game.support_enumeration(), game.lemke_howson()):
+                for eq in equilibria:
+                    row_prob, col_prob = eq
+                    row_prob_arr = np.asarray(row_prob)
+                    col_prob_arr = np.asarray(col_prob)
+                    row_values = row_payoff @ col_prob_arr
+                    col_values = row_prob_arr @ col_payoff
+                    row_v = float(row_prob_arr @ row_values)
+                    col_v = float(col_values @ col_prob_arr)
+                    eps = max(float(np.max(row_values) - row_v),
+                              float(np.max(col_values) - col_v), 0.0)
+                    if eps <= tolerance:
+                        return ((tuple(float(x) for x in row_prob),
+                                 tuple(float(x) for x in col_prob)),
+                                (row_v, col_v), eps)
+        except (ImportError, Exception):  # nashpy 不可用或数值失败时退回 SLSQP
+            pass
+
+    # ---- 路径 2：SLSQP regret minimization（通用，含三人博弈）----
     offsets = np.cumsum([0, *sizes])
     numeric = {
         joint: tuple(-1e12 if value == -inf else value for value in values)
