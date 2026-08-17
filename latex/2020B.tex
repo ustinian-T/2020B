@@ -107,9 +107,8 @@
 
     \item \textbf{完全理性假设。}所有玩家均以终端可变现财富（到达时的现金加剩余资源半价回收）最大化为唯一目标，在决策中不包含风险偏好、合作倾向或利他行为等非理性因素。
 
-    \item \textbf{无信息泄漏假设。}问题二和问题三第（2）小问中，玩家决策仅依赖当天已公开的天气与状态信息，不使用任何尚未发生的未来天气数据或未经观察的其他玩家状态。
+    \item \textbf{无信息泄漏假设。}玩家决策仅依赖当天已公开的天气与状态信息，不使用任何尚未发生的未来天气数据或未经观察的其他玩家状态。
 
-    \item \textbf{非合作博弈假设。}问题三中玩家之间不存在事前沟通或事中协调，每名玩家独立追求自身利益最大化，博弈的解概念为 Nash 均衡及其精炼。
 \end{enumerate}
 \section{符号说明}
 
@@ -417,11 +416,11 @@ A \succcurlyeq B \ \Leftrightarrow\ w_A \geq w_B,\ f_A \geq f_B,\ C_A \geq C_B,\
 \end{longtable}
 }
 
-结果表明：负重上限对两关均呈显著正向影响。由表~\ref{tab:q1_sens} 可知，第一关负重由 1200 kg 下调至 1080 kg 时，最优财富由 10470 元降至 9670 元；上调至 1320 kg 后增至 11270 元。第二关相应由 12130 元上升到 13365 元。这说明容量不仅减少补给成本，还改变可持续挖矿天数和跨补给点运输能力。
+结果表明：\textbf{负重上限对两关均呈显著正向影响。}第一关负重由 1200 kg 下调至 1080 kg 时，最优财富由 10470 元降至 9670 元；上调至 1320 kg 后增至 11270 元。第二关相应由 12130 元升至 13365 元。容量不仅减少补给成本，还改变可持续挖矿天数。
 
-矿山收益的影响近似分段线性，斜率由最优挖矿天数决定。第一关收益从 1000 元降至 900 元时，最优财富降至 9770 元；升至 1100 元时增至 11180 元。第二关分别为 11430 元和 14030 元，变化幅度更大——由图~\ref{fig:q1_sensitivity} 可见第二关对矿山收益最敏感，财富变化达正负 1300 元，原因是基准策略共挖矿 13 天，收益对总财富的传导系数更高。
+\textbf{矿山收益的影响近似分段线性，斜率由最优挖矿天数决定。}第一关收益从 1000 元降至 900 元时，最优财富降至 9770 元；升至 1100 元时增至 11180 元。第二关分别为 11430 元和 14030 元，\textbf{变化幅度更大（正负 1300 元）}，原因是基准策略共挖矿 13 天，收益传导系数更高。
 
-第一关中，初始资金由 9000 元增至 11000 元时，最优财富同步增加，说明该区间内最优路线和采购结构基本稳定。截止日期调整至 26 天或 28 天时，最优财富仍为 10470 元，主要由于基准策略第 24 天已到达终点，具有充足的时间裕度；相比之下，第二关第 30 天才到达终点，时间约束更为显著。
+\textbf{初始资金的影响线性且稳定。}第一关资金由 9000 元增至 11000 元时最优财富同步增加，说明路线和采购结构基本不变。\textbf{截止日期方面，}第一关 26 天或 28 天时最优财富不变，因基准策略第 24 天已到达；第二关第 30 天才到达，时间约束更为显著。
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.98\textwidth]{fig_q1_strategy_dashboard.png}
@@ -459,7 +458,7 @@ A \succcurlyeq B \ \Leftrightarrow\ w_A \geq w_B,\ f_A \geq f_B,\ C_A \geq C_B,\
 \begin{enumerate}
     \item  \textbf{状态与策略}
     
-    设第$t$日观察到当天气候$\omega_t$后玩家状态为
+    \hspace*{2em}设第$t$日观察到当天气候$\omega_t$后玩家状态为
 \begin{equation}
 s_t=(i_t,\ W_t,\ F_t,\ C_t)
 \label{eq:q2_state}
@@ -478,7 +477,7 @@ h_t(\omega)=h_t(\omega')\ \Rightarrow\ \pi_t(\omega)=\pi_t(\omega')
 
     \item  \textbf{动作集合与状态转移}
     
-    每天从合法动作集$A(s,\omega)$中选择动作。停留、行走、挖矿的消耗倍率分别为1、2、3；沙暴日禁止移动，但允许停留与矿山挖矿；到达矿山当日不能挖矿；购买仅在第0日起点（基准价）与村庄（基准价的2倍）进行。设天气$\omega_t$下的基础消耗为$c_w(\omega_t)$、$c_f(\omega_t)$，则
+    \hspace*{2em}每天从合法动作集$A(s,\omega)$中选择动作。停留、行走、挖矿的消耗倍率分别为1、2、3；沙暴日禁止移动，但允许停留与矿山挖矿；到达矿山当日不能挖矿；购买仅在第0日起点（基准价）与村庄（基准价的2倍）进行。设天气$\omega_t$下的基础消耗为$c_w(\omega_t)$、$c_f(\omega_t)$，则
 \begin{equation}
 W_{t+1}=W_t+b^W_t-\kappa(a_t)c_w(\omega_t),\qquad
 F_{t+1}=F_t+b^F_t-\kappa(a_t)c_f(\omega_t)
@@ -488,32 +487,36 @@ F_{t+1}=F_t+b^F_t-\kappa(a_t)c_f(\omega_t)
 C_{t+1}=C_t-\beta\,p_w b^W_t-\beta\,p_f b^F_t+R\cdot\mathbb{I}(a_t=\text{挖矿})
 \label{eq:q2_cash}
 \end{equation}
-其中$\beta=1$（起点）或$\beta=2$（村庄），$R$为基础挖矿收益，$b^W_t$、$b^F_t$为当日购买量。所有状态须满足资源非负、现金非负与负重约束
+其中$\beta=1$（起点）或$\beta=2$（村庄），$R$为基础挖矿收益，$b^W_t$、$b^F_t$为当日购买量。
+\hspace*{2em}所有状态须满足资源非负、现金非负与负重约束
 \begin{equation}
 W_t\ge 0,\quad F_t\ge 0,\quad C_t\ge 0,\quad m_w W_t+m_f F_t\le M
 \label{eq:q2_con}
 \end{equation}
 
-    为避免"先透支再到村庄补给"的非法行为，从非村庄节点移动至村庄当日的消耗由移动前库存满足，购买只作用于后续状态。
+    \hspace*{2em}为避免"先透支再到村庄补给"的非法行为，从非村庄节点移动至村庄当日的消耗由移动前库存满足，购买只作用于后续状态。
 
     \item  \textbf{终端目标与字典序目标}
     
-    到达终点后剩余资源按基准价一半回收，任一天$\tau\le T$到达终点时的终端财富为
+    \hspace*{2em}到达终点后剩余资源按基准价一半回收，任一天$\tau\le T$到达终点时的终端财富为
 \begin{equation}
 Z(\tau)=C_\tau+0.5\,p_w W_\tau+0.5\,p_f F_\tau
 \label{eq:q2_terminal}
 \end{equation}
-第三关在无合法概率分布的前提下采用自适应鲁棒最大最小目标
+
+\hspace*{2em}第三关在无合法概率分布的前提下采用自适应鲁棒最大最小目标
 \begin{equation}
 \max_{\pi\in\Pi_{\text{NA}}}\ \min_{\omega\in\Omega_3} Z(\pi,\omega)
 \label{eq:q2_obj3}
 \end{equation}
-第四关对给定压力等级$\Gamma$采用
+
+\hspace*{2em}第四关对给定压力等级$\Gamma$采用
 \begin{equation}
 \max_{\pi\in\Pi_{\text{NA}}}\ \min_{\omega\in\Omega_4(\Gamma)} Z(\pi,\omega)
 \label{eq:q2_obj4}
 \end{equation}
-其中$\Pi_{\text{NA}}$为非前视策略集合。若多个策略最坏终端财富相同，则以名义Markov模型下的期望终端财富作第二级判别，形成字典序目标
+
+\hspace*{2em}其中$\Pi_{\text{NA}}$为非前视策略集合。若多个策略最坏终端财富相同，则以名义Markov模型下的期望终端财富作第二级判别，形成字典序目标
 \begin{equation}
 \max_{\pi}\ \Bigl(\min_{\omega\in\Omega} Z(\pi,\omega),\ \ \mathbb{E}_{\hat{P}}\bigl[Z(\pi,\omega)\bigr]\Bigr)
 \label{eq:q2_lex}
@@ -521,12 +524,13 @@ Z(\tau)=C_\tau+0.5\,p_w W_\tau+0.5\,p_f F_\tau
 
     \item  \textbf{鲁棒Bellman递推}
     
-    第三关的鲁棒Bellman递推为
+    \hspace*{2em}第三关的鲁棒Bellman递推为
 \begin{equation}
 V_t(s,\omega)=\max_{a\in A(s,\omega)}\ \min_{\omega'\in\{S,H\}}\ V_{t+1}\bigl(T(s,a,\omega),\omega'\bigr)
 \label{eq:q2_bellman3}
 \end{equation}
-若当前位置已为终点则$V_t(s,\omega)=Z(s)$；若$t>T$仍未到达终点则该状态不可行。第四关将剩余沙暴预算纳入状态，递推为
+
+\hspace*{2em}若当前位置已为终点则$V_t(s,\omega)=Z(s)$；若$t>T$仍未到达终点则该状态不可行。第四关将剩余沙暴预算纳入状态，递推为
 \begin{equation}
 V_t(s,\omega,b)=\max_{a\in A(s,\omega)}\ \min_{\omega'\in W(b)}\ V_{t+1}\bigl(T(s,a,\omega),\omega',b-\mathbb{I}(\omega'=X)\bigr)
 \label{eq:q2_bellman4}
@@ -535,7 +539,8 @@ V_t(s,\omega,b)=\max_{a\in A(s,\omega)}\ \min_{\omega'\in W(b)}\ V_{t+1}\bigl(T(
 W(b)=\{S,H,X\}\ (b>0),\qquad W(0)=\{S,H\}
 \label{eq:q2_budget}
 \end{equation}
-递推所得是一张随状态变化的策略表，而非提前写死的路线。
+
+\hspace*{2em}递推所得是一张随状态变化的策略表，而非提前写死的路线。
 \end{enumerate}
 
 \subsubsection{辅助模型：经验Markov天气模型与名义MDP}
@@ -616,7 +621,7 @@ W(b)=\{S,H,X\}\ (b>0),\qquad W(0)=\{S,H\}
     \label{fig:q2_q3_analysis}
 \end{figure}
 
-图~\ref{fig:q2_q3_analysis}(a) 展示了第三关前三日的非前视决策树：第0日统一采购水、食各54箱后，前两日依据当天天气（晴朗/高温）逐日决定去向，第3日全部到达终点，8个叶节点各自包含128条完整情景。决策树下方矩阵对比了8个叶节点的在线财富、完全信息财富与后悔值均值，最坏叶节点（前三日连续高温）恰好耗尽54箱水食、对应财富9190元。图~\ref{fig:q2_q3_analysis}(b) 将1024条情景按后悔值升序排列，在线策略与完全信息策略两条财富阶梯之间的差距带整体收窄，平均后悔值仅134.45元，表明非前视约束带来的信息损失有限。图~\ref{fig:q2_q3_analysis}(c) 进一步以流带形式刻画财富层级到后悔值层级的流向：绝大多数情景集中在高财富、低后悔的流带，只有高温密集的情景落入最低财富档。
+图~\ref{fig:q2_q3_analysis}(a) 展示了第三关前三日的非前视决策树：第0日统一采购水、食各54箱，前两日依据当天天气逐日决定去向，第3日全部到达终点。\textbf{最坏叶节点（连续高温）恰好耗尽54箱水食，对应财富9190元。}图~\ref{fig:q2_q3_analysis}(b) 中，\textbf{平均后悔值仅134.45元}，表明非前视约束带来的信息损失有限。图~\ref{fig:q2_q3_analysis}(c) 进一步显示：\textbf{绝大多数情景集中在高财富、低后悔的流带}，只有高温密集情景落入最低财富档。
 
 \textbf{第四关：}
 
@@ -641,7 +646,7 @@ W(b)=\{S,H,X\}\ (b>0),\qquad W(0)=\{S,H\}
     \label{tab:q2_q4_frontier}
 \end{table}
 
-由表~\ref{tab:q2_q4_frontier}可知：$\Gamma=6$为推荐锚点；所有$\Gamma$共用同一8步最短路$1\to2\to3\to4\to5\to10\to15\to20\to25$。随$\Gamma$每增加1，初始采购同步增加10箱水、10箱食物，保证财富下界下降150元，最迟保证到达日推迟1天。需注意，本表为预算鲁棒模型的可证明安全下界，未包含村庄补给与矿山收益的全局最优鲁棒前沿。
+由表~\ref{tab:q2_q4_frontier}可知：\textbf{$\Gamma=6$为推荐锚点}，所有$\Gamma$共用同一8步最短路。$\Gamma$每增加1，初始采购同步增加10箱水、10箱食物，\textbf{保证财富下界下降150元，最迟到达日推迟1天}。需注意，本表为预算鲁棒模型的可证明安全下界，未包含村庄补给与矿山收益的全局最优鲁棒前沿。
 
 \begin{figure}[H]
     \centering
@@ -657,6 +662,10 @@ W(b)=\{S,H,X\}\ (b>0),\qquad W(0)=\{S,H\}
     \label{fig:q2_strategy_evidence}
 \end{figure}
 
+图~\ref{fig:q2_robust_frontier} 呈现了$\Gamma=0,\dots,9$下的稳健前沿：\textbf{随沙暴预算增大，成功率由14.27\%升至99.98\%，但平均财富由8090元降至7260元}，形成清晰的"安全—收益"权衡。$\Gamma=6$取得\textbf{成功率98.84\%、平均财富7490元}的折中。
+
+图~\ref{fig:q2_strategy_evidence} 对比四种策略：\textbf{鲁棒$\Gamma=6$与高安全基线均接近全成功（98.84\%）}，均值财富分别为7489.81元和7264.81元；第一问固定方案与$\Gamma=2$分别出现43.13\%与33.62\%的失败区。固定方案成功样本均值虽高（8127元），但该条件均值排除了大量失败样本，不能单独作为策略优劣依据。\textbf{高安全基线与$\Gamma=6$成功率相同但均值低约225元}，证明非"买得越多越好"。
+
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.98\textwidth]{fig_q2_q4_robustness_validation.png}
@@ -664,7 +673,8 @@ W(b)=\{S,H,X\}\ (b>0),\qquad W(0)=\{S,H\}
     \label{fig:q2_robustness_validation}
 \end{figure}
 
-图~\ref{fig:q2_robust_frontier} 呈现了$\Gamma=0,\dots,9$下的稳健前沿：随沙暴预算增大，成功率由14.27\%单调升至99.98\%，但成功样本平均财富由8090元降至7260元，形成清晰的"安全—收益"权衡；$\Gamma=6$作为题内数据锚定（历史含6个沙暴日）取得成功率98.84\%、平均财富7490元、5\%分位7250元的折中。图~\ref{fig:q2_strategy_evidence} 以一万点微点矩阵对比\textbf{四种}策略：鲁棒策略$\Gamma=6$几乎全为成功（98.84\%，均值7489.81），高安全基线同样接近全成功（98.84\%，均值7264.81），而第一问固定天气方案与低保护方案$\Gamma=2$分别出现43.13\%与33.62\%的失败区；固定方案虽在成功样本上平均财富更高（8127元），但该条件均值排除了大量失败样本，不能单独作为策略优劣依据。高安全基线与鲁棒$\Gamma=6$成功率相同但均值财富低约225元，证明该安全下界并非"买得越多越好"。图~\ref{fig:q2_robustness_validation} 对Markov矩阵沙暴列权重做0.7--1.3倍扰动后重抽样，沙暴概率提高30\%时成功率仍达96.70\%、平均到达日仅延至10.51天，主要结论未反转，说明策略不依赖Markov单点估计；右侧热力矩阵直观展示了晴朗/高温/沙暴之间的一阶转移结构。
+
+图~\ref{fig:q2_robustness_validation} 对Markov矩阵做0.7--1.3倍扰动：\textbf{沙暴概率提高30\%时成功率仍达96.70\%}，主要结论未反转，说明策略不依赖Markov单点估计。
 
 \subsubsection{最优性验证}
 
@@ -817,7 +827,7 @@ def solve_pure_nash(level, game):
 
 \textbf{1.公开状态与当天合法动作}
 
-日末观察被题目明确允许，故第 $t$ 天决策时公共状态为
+\hspace*{2em}日末观察被题目明确允许，故第 $t$ 天决策时公共状态为
 \begin{equation}
 S_t=\bigl\{(v_{i,t-1},W_{i,t-1},F_{i,t-1},C_{i,t-1})_{i=1}^n,\ \omega_t,\ t\bigr\}.
 \end{equation}
@@ -825,7 +835,7 @@ S_t=\bigl\{(v_{i,t-1},W_{i,t-1},F_{i,t-1},C_{i,t-1})_{i=1}^n,\ \omega_t,\ t\bigr
 
 \textbf{2.未来天气不确定集}
 
-题目仅说明"30 日内较少出现沙暴"，未给出概率分布。用 $\Gamma_t$ 表示从第 $t+1$ 天至截止日允许的沙暴预算，未来天气集合定义为
+\hspace*{2em}题目仅说明"30 日内较少出现沙暴"，未给出概率分布。用 $\Gamma_t$ 表示从第 $t+1$ 天至截止日允许的沙暴预算，未来天气集合定义为
 \begin{equation}
 \Omega_t(\Gamma_t)=\bigl\{\omega_{t+1:T}:\sum_{\tau=t+1}^T\mathbf{1}(\omega_\tau=\text{沙暴})\le\Gamma_t,\ \omega_\tau\in\{\text{晴},\text{高温},\text{沙暴}\}\bigr\}.
 \end{equation}
@@ -833,7 +843,7 @@ $\Gamma$ 不是"真实概率"，而是"较少沙暴"的数学化情景变量。�
 
 \textbf{3.单人鲁棒续值}
 
-对子问(2)中每一个候选当天动作执行后的个人状态 $s_i'$，调用第二问的鲁棒 DP 计算从次日起在未来天气集合内的最坏情形可达财富
+\hspace*{2em}对子问(2)中每一个候选当天动作执行后的个人状态 $s_i'$，调用第二问的鲁棒 DP 计算从次日起在未来天气集合内的最坏情形可达财富
 \begin{equation}
 \hat{V}_i(t{+}1,s_i';\,\Gamma_t)=\max_{\pi_i}\min_{\omega\in\Omega_t(\Gamma_t)}U_i(\pi_i;\,\omega\mid s_i').
 \end{equation}
@@ -841,7 +851,7 @@ $\Gamma$ 不是"真实概率"，而是"较少沙暴"的数学化情景变量。�
 
 \textbf{4.当天阶段博弈与局部耦合价值分解}
 
-给定当天公共状态 $S_t$，对联合动作 $a_t=(a_{1,t},\dots,a_{n,t})$ 按题目规则精确计算同行、同矿、同村购买人数，得到每名玩家动作后的新个人状态 $s_i'(a_t)$，并以鲁棒续值作为当天支付：
+\hspace*{2em}给定当天公共状态 $S_t$，对联合动作 $a_t=(a_{1,t},\dots,a_{n,t})$ 按题目规则精确计算同行、同矿、同村购买人数，得到每名玩家动作后的新个人状态 $s_i'(a_t)$，并以鲁棒续值作为当天支付：
 \begin{equation}
 Q_i(S_t,a_t)=\hat{V}_i(t{+}1,s_i'(a_t);\Gamma_t').
 \end{equation}
@@ -849,17 +859,17 @@ Q_i(S_t,a_t)=\hat{V}_i(t{+}1,s_i'(a_t);\Gamma_t').
 \begin{equation}
 Q_i(S_t,a_i^*,a_{-i}^*)\ge Q_i(S_t,a_i,a_{-i}^*),\quad \forall a_i\in A_i(S_t,\omega_t).
 \end{equation}
-该方法把全局动态博弈分解为一系列小型阶段博弈，同时利用鲁棒续值保留"今天的动作会改变未来位置和库存"的长期影响。
+\hspace*{2em}该方法把全局动态博弈分解为一系列小型阶段博弈，同时利用鲁棒续值保留"今天的动作会改变未来位置和库存"的长期影响。
 
 \textbf{5.求解方法：每天滚动重算与Nash混合求解}
 
-第六关与第五关的本质差异在于信息结构：未来天气未知、但每日日末能观测他人状态。若沿用第五关的"第 0 天锁定完整方案"，就隐含使用了尚未公开的未来天气，构成信息穿越。因此求解必须落到"当天"这一时间尺度上，核心思路为四点：
+\hspace*{2em}第六关与第五关的本质差异在于信息结构：未来天气未知、但每日日末能观测他人状态。若沿用第五关的"第 0 天锁定完整方案"，就隐含使用了尚未公开的未来天气，构成信息穿越。因此求解必须落到"当天"这一时间尺度上，核心思路为四点：
 
-\textbf{当天只做合法、可观测的决策。}第 $t$ 天决策输入只有当天天气 $\omega_t$ 与公开状态 $S_t$（各玩家位置、资源、资金），从源头杜绝偷看未来。
+\hspace*{2em}\textbf{当天只做合法、可观测的决策。}第 $t$ 天决策输入只有当天天气 $\omega_t$ 与公开状态 $S_t$（各玩家位置、资源、资金），从源头杜绝偷看未来。
 
-\textbf{当天耦合精确、未来价值近似。}联合动作下的同行、同矿、同村即时成本按规则精确计算，长期影响用第二问的单人鲁棒 DP 续值 $\hat V_i$ 刻画。将不可承受的三人 30 天联合状态空间拆解为"当天小博弈 $+$ 单人未来价值"。
+\hspace*{2em}\textbf{当天耦合精确、未来价值近似。}联合动作下的同行、同矿、同村即时成本按规则精确计算，长期影响用第二问的单人鲁棒 DP 续值 $\hat V_i$ 刻画。将不可承受的三人 30 天联合状态空间拆解为"当天小博弈 $+$ 单人未来价值"。
 
-\textbf{形成当天阶段博弈并求 Nash。}以 $\hat V_i$ 作为当天支付，构造当日 $n$ 人有限博弈，优先搜索纯 Nash，保证今天的选择对所有人都是稳定的。
+\hspace*{2em}\textbf{形成当天阶段博弈并求 Nash。}以 $\hat V_i$ 作为当天支付，构造当日 $n$ 人有限博弈，优先搜索纯 Nash，保证今天的选择对所有人都是稳定的。
 
 \textbf{只执行当天动作、次日重算。}当天均衡只执行一天，日末记录公开观测，次日基于新状态重新建模。未来冲突在真正发生前逐日进入当前阶段，而非提前假设对手的固定轨迹。
 
@@ -926,7 +936,7 @@ def rolling_policy(level, game, weather_today, Gamma):
 \begin{enumerate}
     \item \textbf{鲁棒权衡分析检验}
     
-    鲁棒参数 $\Gamma$ 控制天气不确定集的保守程度：$\Gamma=0$ 时财富下界 9625 元、保证用时 11 天；$\Gamma=1$ 时财富下界降至 9475 元、保证用时增至 12 天。$\Gamma$ 每增加 1 财富下界下降约 150 元，但保证策略在更恶劣天气下的可行性。
+    \hspace*{2em}鲁棒参数 $\Gamma$ 控制天气不确定集的保守程度：$\Gamma=0$ 时财富下界 9625 元、保证用时 11 天；$\Gamma=1$ 时财富下界降至 9475 元、保证用时增至 12 天。$\Gamma$ 每增加 1 财富下界下降约 150 元，但保证策略在更恶劣天气下的可行性。
 
     \begin{figure}[H]
         \centering
@@ -934,11 +944,12 @@ def rolling_policy(level, game, weather_today, Gamma):
         \caption{Gamma 鲁棒权衡分析}
         \label{fig:q33_gamma}
     \end{figure}
-    \textbf{结论：}主场景取 $\Gamma=6$ 基于第一、二关 30 日天气含 6 个沙暴日的经验参照，\textbf{在风险防御与收益之间取得合理平衡}。
+
+    \hspace*{2em}\textbf{结论：}主场景取 $\Gamma=6$ 基于第一、二关 30 日天气含 6 个沙暴日的经验参照，\textbf{在风险防御与收益之间取得合理平衡}。
 
     \item \textbf{消融实验检验}
     
-    完整模型平均终端财富 8890 元；去除博弈机制后冲突损失达 4560 元，说明日间阶段博弈有效避免了多人耦合的高倍率消耗；使用最短路径模型时冲突损失进一步增至 6180 元。
+    \hspace*{2em}完整模型平均终端财富 8890 元；去除博弈机制后冲突损失达 4560 元，说明日间阶段博弈有效避免了多人耦合的高倍率消耗；使用最短路径模型时冲突损失进一步增至 6180 元。
 
     \begin{figure}[H]
         \centering
@@ -946,11 +957,12 @@ def rolling_policy(level, game, weather_today, Gamma):
         \caption{基准与消融实验}
         \label{fig:q34_ablation}
     \end{figure}
-    \textbf{结论：博弈机制是控制多人冲突损失的最关键模块，其贡献远超路径规划本身。}
+    
+    \hspace*{2em}\textbf{结论：博弈机制是控制多人冲突损失的最关键模块，其贡献远超路径规划本身。}
 
     \item \textbf{Ex-post Regret 检验}
     
-    完全信息 Oracle 可达理论财富上界 41732.5 元，在线策略在仅知当天天气的条件下仍保持稳定的近优性能，Regret 值处于合理范围。
+    \hspace*{2em}完全信息 Oracle 可达理论财富上界 41732.5 元，在线策略在仅知当天天气的条件下仍保持稳定的近优性能，Regret 值处于合理范围。
 
     \begin{figure}[H]
         \centering
@@ -958,11 +970,12 @@ def rolling_policy(level, game, weather_today, Gamma):
         \caption{Ex-post Regret 分析}
         \label{fig:q35_regret}
     \end{figure}
-    \textbf{结论：}即使没有未来信息，\textbf{"当天耦合精确 + 未来鲁棒续值"的近似策略能逼近完全信息下的最优决策}。
+    
+    \hspace*{2em}\textbf{结论：}即使没有未来信息，\textbf{"当天耦合精确 + 未来鲁棒续值"的近似策略能逼近完全信息下的最优决策}。
 
     \item \textbf{玩家规模扩展检验}
     
-    玩家数从 2 增至 3 时，平均终端财富下降约 $2.43\%$，冲突损失从 0 增至 220 元。
+    \hspace*{2em}玩家数从 2 增至 3 时，平均终端财富下降约 $2.43\%$，冲突损失从 0 增至 220 元。
 
     \begin{figure}[H]
         \centering
@@ -970,11 +983,12 @@ def rolling_policy(level, game, weather_today, Gamma):
         \caption{玩家规模扩展分析}
         \label{fig:q36_scale}
     \end{figure}
-    \textbf{结论：}所有阶段均保持纯 Nash（$\varepsilon_{\max}=0$），\textbf{模型在规模扩展时不会出现均衡丢失}。
+    
+    \hspace*{2em}\textbf{结论：}所有阶段均保持纯 Nash（$\varepsilon_{\max}=0$），\textbf{模型在规模扩展时不会出现均衡丢失}。
 
     \item \textbf{参数敏感性检验}
     
-    初始采购邻域内 25 组参数组合下，模型在大部分参数区域保持较高性能，仅在极端参数组合下财富出现明显下降。
+    \hspace*{2em}初始采购邻域内 25 组参数组合下，模型在大部分参数区域保持较高性能，仅在极端参数组合下财富出现明显下降。
 
     \begin{figure}[H]
         \centering
@@ -982,6 +996,8 @@ def rolling_policy(level, game, weather_today, Gamma):
         \caption{参数敏感性热力图}
         \label{fig:q32_heatmap}
     \end{figure}
+
+    \hspace*{2em}
     \textbf{结论：模型对参数扰动具有较好的鲁棒性。}
 \end{enumerate}
 
