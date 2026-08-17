@@ -8,7 +8,13 @@ from typing import Iterable, Mapping, Sequence
 import numpy as np
 
 from .config import GameConfig, LevelConfig
-from .robust_dp_q4 import SafeBaselinePlan, build_safe_baseline, simulate_safe_baseline
+from .robust_dp_q4 import (
+    HighSafetyPlan,
+    SafeBaselinePlan,
+    build_safe_baseline,
+    simulate_high_safety,
+    simulate_safe_baseline,
+)
 from .transition import initial_state
 from .weather_markov import (
     HISTORICAL_WEATHER,
@@ -134,8 +140,15 @@ def _oracle_wealth(
     return float(wealth), arrival, storms
 
 
+def _simulate_plan(plan, scenario):
+    """根据 plan 类型路由到对应的仿真函数。"""
+    if isinstance(plan, HighSafetyPlan):
+        return simulate_high_safety(plan, scenario)
+    return simulate_safe_baseline(plan, scenario)
+
+
 def evaluate_strategies(
-    plans: Mapping[str, SafeBaselinePlan],
+    plans: Mapping[str, object],
     scenarios: Sequence[tuple[str, ...]],
 ) -> tuple[tuple[StrategyMetrics, ...], tuple[TrialResult, ...]]:
     if not plans:
@@ -147,7 +160,7 @@ def evaluate_strategies(
         successes: list[tuple[float, int, float]] = []
         for number, scenario in enumerate(scenarios, start=1):
             oracle = _oracle_wealth(scenario, plan.shortest_steps, plan.game)
-            simulation = simulate_safe_baseline(plan, scenario)
+            simulation = _simulate_plan(plan, scenario)
             oracle_wealth = oracle[0] if oracle else None
             storm_count = oracle[2] if oracle else scenario.count("沙暴")
             regret = (
@@ -255,3 +268,167 @@ def write_rows(path: Path, rows: Iterable[object]) -> None:
         writer = csv.DictWriter(handle, fieldnames=list(normalized[0].keys()))
         writer.writeheader()
         writer.writerows(normalized)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 参数灵敏度（手册 §8.4）
+# 扫描 M (容量), C₀ (初始资金), R (挖矿收益), T (截止日)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+CAPACITY_SWEEP = (1080, 1140, 1260, 1320)
+INITIAL_CASH_SWEEP = (9000, 9500, 10500, 11000)
+MINE_INCOME_SWEEP = (900, 950, 1050, 1100)
+DEADLINE_SWEEP = (28, 29, 31, 32)
+
+
+def parameter_sensitivity(
+    level: LevelConfig,
+    base_game: GameConfig,
+    scenarios: Sequence[tuple[str, ...]],
+    gamma: int = 6,
+) -> tuple[dict, ...]:
+    """对手册 §8.4 列出的关键参数做局部扰动灵敏度分析。
+
+    对每个扰动值，重新构造对应 GameConfig + 安全下界，
+    在同一 Monte Carlo 测试集上评估成功率与财富分布。
+
+    返回 dict 列表（含参数名、参数值、初购、成功率、平均财富、5%分位、平均 Regret）。
+    """
+    rows: list[dict] = []
+    for capacity in CAPACITY_SWEEP:
+        game = replace(base_game, capacity_kg=capacity)
+        plan = build_safe_baseline(level, game, gamma)
+        metrics, _ = evaluate_strategies({f"M={capacity}": plan}, scenarios)
+        item = metrics[0]
+        rows.append(
+            {
+                "参数": "负重M",
+                "参数值": capacity,
+                "初购水": plan.initial_state.water,
+                "初购食物": plan.initial_state.food,
+                "初购后现金": plan.initial_state.cash,
+                "成功率": item.success_rate,
+                "成功样本平均财富": item.mean_wealth,
+                "5%分位财富": item.q05_wealth,
+                "平均Regret": item.mean_regret,
+            }
+        )
+    for cash in INITIAL_CASH_SWEEP:
+        game = replace(base_game, initial_cash=cash)
+        plan = build_safe_baseline(level, game, gamma)
+        metrics, _ = evaluate_strategies({f"C0={cash}": plan}, scenarios)
+        item = metrics[0]
+        rows.append(
+            {
+                "参数": "初始资金C0",
+                "参数值": cash,
+                "初购水": plan.initial_state.water,
+                "初购食物": plan.initial_state.food,
+                "初购后现金": plan.initial_state.cash,
+                "成功率": item.success_rate,
+                "成功样本平均财富": item.mean_wealth,
+                "5%分位财富": item.q05_wealth,
+                "平均Regret": item.mean_regret,
+            }
+        )
+    for income in MINE_INCOME_SWEEP:
+        game = replace(base_game, mine_income=income)
+        plan = build_safe_baseline(level, game, gamma)
+        metrics, _ = evaluate_strategies({f"R={income}": plan}, scenarios)
+        item = metrics[0]
+        rows.append(
+            {
+                "参数": "挖矿收益R",
+                "参数值": income,
+                "初购水": plan.initial_state.water,
+                "初购食物": plan.initial_state.food,
+                "初购后现金": plan.initial_state.cash,
+                "成功率": item.success_rate,
+                "成功样本平均财富": item.mean_wealth,
+                "5%分位财富": item.q05_wealth,
+                "平均Regret": item.mean_regret,
+            }
+        )
+    for deadline in DEADLINE_SWEEP:
+        # 重新生成匹配新截止日长度的 Monte Carlo 场景
+        new_scenarios = generate_markov_weather(
+            len(scenarios), deadline, 20200816,
+        )
+        game = replace(base_game, deadline=deadline)
+        plan = build_safe_baseline(level, game, gamma)
+        metrics, _ = evaluate_strategies({f"T={deadline}": plan}, new_scenarios)
+        item = metrics[0]
+        rows.append(
+            {
+                "参数": "截止日T",
+                "参数值": deadline,
+                "初购水": plan.initial_state.water,
+                "初购食物": plan.initial_state.food,
+                "初购后现金": plan.initial_state.cash,
+                "成功率": item.success_rate,
+                "成功样本平均财富": item.mean_wealth,
+                "5%分位财富": item.q05_wealth,
+                "平均Regret": item.mean_regret,
+            }
+        )
+    return tuple(rows)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 策略稳定区识别（手册 §6.3 第 3 条）
+# 识别连续 Γ 区间内"初购 + 关键动作完全相同"的稳定段
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def strategy_stability_region(
+    q4_plans: Sequence[SafeBaselinePlan],
+) -> tuple[dict, ...]:
+    """对安全下界方案（按 Γ 排序）做稳定区识别。
+
+    判定准则：
+    - 相邻 Γ 的初始采购 (water, food, cash) 完全相同
+    - 最短路径（隐含决策规则）完全相同
+
+    返回 dict 列表，每个 dict 对应一个稳定区间：
+    - Γ_min / Γ_max: 区间端点
+    - 区间长度: Γ_max - Γ_min + 1
+    - 初购水/食物/现金
+    - 最短路径
+    """
+    if not q4_plans:
+        return ()
+    sorted_plans = sorted(q4_plans, key=lambda p: p.gamma)
+    rows: list[dict] = []
+    cur_start = sorted_plans[0]
+    cur_end = sorted_plans[0]
+    for plan in sorted_plans[1:]:
+        same_purchase = (
+            plan.initial_state.water == cur_start.initial_state.water
+            and plan.initial_state.food == cur_start.initial_state.food
+            and plan.initial_state.cash == cur_start.initial_state.cash
+        )
+        same_path = plan.path == cur_start.path
+        if same_purchase and same_path:
+            cur_end = plan
+        else:
+            rows.append(_stability_row(cur_start, cur_end))
+            cur_start = plan
+            cur_end = plan
+    rows.append(_stability_row(cur_start, cur_end))
+    return tuple(rows)
+
+
+def _stability_row(start: SafeBaselinePlan, end: SafeBaselinePlan) -> dict:
+    return {
+        "Γ_min": start.gamma,
+        "Γ_max": end.gamma,
+        "区间长度": end.gamma - start.gamma + 1,
+        "初购水": start.initial_state.water,
+        "初购食物": start.initial_state.food,
+        "初购后现金": start.initial_state.cash,
+        "保证财富下界": start.guaranteed_wealth,
+        "最迟保证到达日": end.shortest_steps + end.gamma,
+        "最短路径": "-".join(map(str, start.path)),
+        "策略性质": "稳定区",
+    }
