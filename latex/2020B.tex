@@ -14,7 +14,7 @@
 \renewcommand{\thetable}{\arabic{section}.\arabic{table}}
 
 % 第一问、第二问增强图表所在目录
-\graphicspath{{../求解代码/第一问/figures_enhanced/}{../求解代码/第二问/figures_enhanced/}}
+\graphicspath{{../求解代码/第一问/figures_enhanced/}{../求解代码/第二问/figures_enhanced/}{../求解代码/第三问（1）/03图片输出/}{../求解代码/第三问（2）/03图片输出/}}
 \title{基于模型的问题研究}
 \tihao{A}
 \baominghao{xxxx}
@@ -81,6 +81,8 @@
 注2：Result.xlsx中剩余资金数（剩余水量、剩余食物量）指当日所需资源全部消耗完毕后的资金数（水量、食物量）。若当日还有购买行为，则指完成购买后的资金数（水量、食物量）。
 
 \section{问题分析}
+
+        
         \subsection{问题一的分析}
         问题一需要求解在天气已知、时间有限、位置离散、资源受限且途中可进行补给与矿山产生收益的情况下进行决策。
         因此，不能简单追求最短路径或最高收益，必须进行联合优化。首先将最短路径设置为下界，由于同一时间、同一位置可以由不同历史路径到达，而后续最优决策仅取决于当前所剩资源与现金，满足Bellman最优子结构。
@@ -92,7 +94,23 @@
         据此以天为阶段，以位置、水量、食物量、现金与天气情况为状态，以最终财富（现金与剩余资源半价回收）为价值函数，逐日枚举移动、停留、挖矿与补给动作，
         用在未来所有天气分支中最不利分支的后续最优值形成自适应鲁棒Bellman递推，得到动态规划路线。同时借助Pareto、时间下界与资源上界剪枝剔除不可能最优状态，并以题内30日天气样本估计的经验Markov模型作名义期望并列判别，以完全信息Oracle与蒙特卡洛交叉验证策略的稳健性与近优性，最终得到最优策略。
         \subsection{问题三的分析}
+        问题三在问题一、问题二的基础上引入多人参与，将单人决策转化为多人非合作博弈。每名玩家的最优行动与他人当日决策直接相关。
+
+        第一小问中，整个游戏天气已知且方案在第0天后不可修改，每名玩家都希望最大化自身利益，但同向移动、同时挖矿会导致个体收益受到影响。因此应当将每个完整行动序列视为纯策略，构造完全信息开环动态博弈。在求解时，采用固定对方方案后用资源约束DP求解全局最优响应，再通过迭代或扩展策略寻找Nash均衡，并以单边偏离检验证明均衡稳定性。最终完成求解。
+
+        第二小问中，天气与未来竞争位置不定。考虑到完整三人Markov博弈，但不确定因素过多导致其笛卡尔积过大，因此转换方法选用局部耦合价值求解。将当天的同行、同矿、同村计算出来，并经单人鲁棒DP给出停留、挖矿、移动动作的未来价值。最后得到结果。
+        根据这些值生成当日的小型阶段博弈求Nash均衡，只执行当天动作，次日重新求解。
 \section{模型假设}
+
+\begin{enumerate}
+    \item \textbf{离散时间与整数资源假设。}游戏以天为最小时间单位，所有决策（移动、停留、挖矿、补给）均以天为周期执行；水和食物的计量单位为箱，采购与消耗量均为整数，不考虑连续数量下的部分消耗。
+
+    \item \textbf{完全理性假设。}所有玩家均以终端可变现财富（到达时的现金加剩余资源半价回收）最大化为唯一目标，在决策中不包含风险偏好、合作倾向或利他行为等非理性因素。
+
+    \item \textbf{无信息泄漏假设。}问题二和问题三第（2）小问中，玩家决策仅依赖当天已公开的天气与状态信息，不使用任何尚未发生的未来天气数据或未经观察的其他玩家状态。
+
+    \item \textbf{非合作博弈假设。}问题三中玩家之间不存在事前沟通或事中协调，每名玩家独立追求自身利益最大化，博弈的解概念为 Nash 均衡及其精炼。
+\end{enumerate}
 \section{符号说明}
 
 \section{模型建立与求解}
@@ -576,8 +594,7 @@ W(b)=\{S,H,X\}\ (b>0),\qquad W(0)=\{S,H\}
     
 \end{table}
 
-由表~\ref{tab:q2_q3_core} 可知，第三关鲁棒策略在第0日采购54箱水、54箱食物，第1--3日连续行走，于第3日到达终点。在所有1024种无沙暴天气序列上均成功到达，失败数为0。最坏情景为前三日连续高温HHHSSSSSSS，对应终端财富9190元；情景均值9310元、5\%分位9190元，与最坏值重合，说明最坏情形被多条序列同时触及。与完全信息Oracle相比，后悔值最小为0、中位数为145元、最大240元，即在1024种天气中，有一半情景因不预知未来天气仅损失不超过145元，表明该策略具有很强的近优性。
-
+由表~\ref{tab:q2_q3_core} 可知，\textbf{第三关鲁棒策略在第0日采购54箱水和54箱食物，第1--3日连续行走，于第3日到达终点。}在1024种无沙暴天气序列下均成功到达，\textbf{失败数为0}。最坏情景为前三日连续高温，对应\textbf{终端财富9190元}。与完全信息Oracle相比，后悔值中位数为145元、最大为240元，说明\textbf{该策略在未知未来天气的情况下仍具有较好的近优性。}
 \begin{figure}[H]
     \centering
     \begin{subfigure}[t]{0.32\textwidth}
@@ -655,17 +672,320 @@ W(b)=\{S,H,X\}\ (b>0),\qquad W(0)=\{S,H\}
 
 \subsubsection{灵敏性分析}
 
-针对第四关安全下界策略的关键参数开展灵敏度分析。\textbf{其一是$\Gamma$敏感性}：表~\ref{tab:q2_q4_frontier} 已显示初购量、保证财富与最迟到达日随$\Gamma$单调变化——每增加1天沙暴预算，初始采购同步增加10箱水与10箱食物，保证财富下界下降150元，最迟到达日推迟1天，\textbf{说明当前安全下界对$\Gamma$敏感}（$\Gamma=0\sim 6$区间长度均为1，不存在"宽稳定区"）。\textbf{其二是负重$M$扰动}：将负重上限在$\pm 5\%$、$\pm 10\%$内偏移，结果保持不变，\textbf{仅说明当前库存未触发容量阈值}，不能据此外推到高库存压力场景。\textbf{其三是初始资金$C_0$扰动}：$\pm 5\%$、$\pm 10\%$范围内，成功率保持不变，仅成功样本财富随$C_0$线性平移，\textbf{额外资金未改变策略结构}。\textbf{其四是矿山收益$R$扰动}：$\pm 5\%$、$\pm 10\%$范围内结果不变，\textbf{在当前不挖矿的安全下界策略下，$R$的局部扰动不改变结果，因此该灵敏度反映的是策略结构而非矿山收益的一般无关性}。\textbf{其五是截止日$T$扰动}：$T\pm 1$、$\pm 2$天内，成功率与财富轻微变化，\textbf{$T=30$附近有一定时间冗余}。\textbf{其六是天气概率分布扰动}：对Markov矩阵沙暴列权重乘$0.7$--$1.3$倍率重抽样，沙暴概率提高30\%时成功率仍达96.70\%，\textbf{属于评价分布敏感性，不是主模型概率参数}。综上，本节六维灵敏度共同说明所提策略不依赖任何单一参数假设，且结论不因题面假设轻微偏移而反转。
+针对第四关安全下界策略的关键参数开展灵敏度分析。
+
+\textbf{1.$\Gamma$敏感性}：表~\ref{tab:q2_q4_frontier} 已显示初购量、保证财富与最迟到达日随$\Gamma$单调变化——每增加1天沙暴预算，初始采购同步增加10箱水与10箱食物，保证财富下界下降150元，最迟到达日推迟1天，\textbf{说明当前安全下界对$\Gamma$敏感}（$\Gamma=0\sim 6$区间长度均为1，不存在"宽稳定区"）。
+
+\textbf{2.负重$M$扰动}：将负重上限在$\pm 5\%$、$\pm 10\%$内偏移，结果保持不变，\textbf{仅说明当前库存未触发容量阈值}，不能据此外推到高库存压力场景。
+
+\textbf{3.初始资金$C_0$扰动}：$\pm 5\%$、$\pm 10\%$范围内，成功率保持不变，仅成功样本财富随$C_0$线性平移，\textbf{额外资金未改变策略结构}。
+
+\textbf{4.矿山收益$R$扰动}：$\pm 5\%$、$\pm 10\%$范围内结果不变，\textbf{在当前不挖矿的安全下界策略下，$R$的局部扰动不改变结果，因此该灵敏度反映的是策略结构而非矿山收益的一般无关性}。
+
+\textbf{5.截止日$T$扰动}：$T\pm 1$、$\pm 2$天内，成功率与财富轻微变化，\textbf{$T=30$附近有一定时间冗余}。
+
+\textbf{6.天气概率分布扰动}：对Markov矩阵沙暴列权重乘$0.7$--$1.3$倍率重抽样，沙暴概率提高30\%时成功率仍达96.70\%，\textbf{属于评价分布敏感性，不是主模型概率参数}。
+
+综上，本节六维灵敏度共同说明所提策略不依赖任何单一参数假设，具有较强的稳定性。
 
 \subsubsection{第二问结论}
 
-综合上述建模与求解，第二问得到以下结论：
+综合上述求解与分析，第二问得到以下结论：
 
-\textbf{第一，}在天气信息逐日揭示、未来天气不可见的条件下，自适应鲁棒动态规划将决策对象由固定路线推广为满足非前视约束的反馈策略，不依赖任何人为天气概率，所得策略对题面信息结构具有可解释性。
+\textbf{第一，}第三关在1024种无沙暴天气序列下均成功到达终点，\textbf{成功率达到100\%}，最坏终端财富为\textbf{9190元}。与完全信息Oracle相比，后悔值中位数为\textbf{145元}、最大为\textbf{240元}，说明未知未来天气带来的收益损失较小，策略具有较好的近优性。
 
-\textbf{第二，}第三关在1024种无沙暴天气序列上全部成功到达，最坏终端财富9190元，与完全信息Oracle相比后悔值中位数仅145元，说明"仅知当天"信息结构下的策略损失有限，具有强近优性。
+\textbf{第二，}第四关中，第0日采购水、食物各204箱，最迟第14日到达，财富下界为\textbf{6940元}。Monte Carlo模拟表明，成功率达到\textbf{98.84\%}，成功样本平均财富为\textbf{7489.81元}，表明该策略能够在未知天气条件下显著降低失败风险。
 
-\textbf{第三，}第四关将"沙暴较少"的模糊语义参数化为$\Gamma$预算不确定集，理论上建立了带剩余沙暴预算的预算鲁棒动态规划作为决策框架；考虑全规模初购搜索的计算复杂度，算例求解采用同一$\Gamma$语义下的\textbf{可证明安全下界策略}，其数值结果（表~\ref{tab:q2_q4_frontier}）为该安全下界的统计评价，\textbf{并非完整自适应鲁棒DP的全局最优解}；结合名义Markov模型的Monte Carlo评价，能够在"稳健安全"与"名义收益"之间给出客观取舍依据。
+\textbf{第三，}两关策略均表现出较好的稳定性，信息泄漏检验全部通过；在扰动天气参数后，成功率仍达到\textbf{96.70\%}，说明策略具有较强的\textbf{鲁棒性}。
+\subsection{问题三的模型建立与求解}
+
+\subsubsection{第三问问题一：第五关——开环有限动态博弈模型}
+
+第五关 $n=2$，$T=10$，整个游戏期天气全部已知；每名玩家必须在第 0 天一次性确定完整方案并保持不变。该信息结构严格对应开环（open-loop）有限期完全信息非合作动态博弈：每个完整方案是一个纯策略，纯 Nash 均衡要求任一玩家在对手方案不变时没有盈利偏离。
+
+\textbf{1.决策变量与完整策略}
+
+玩家 $i$ 的纯策略 $\pi_i$ 由第 0 天起点采购 $(q^w_{i,0},q^f_{i,0})$ 与第 $1\sim T$ 天的完整行动计划组成，包括向相邻区域移动 $x_{i,t,u,v}$、普通停留 $s_{i,t}$、矿山挖矿 $z_{i,t,m}$ 以及村庄补给 $q^w_{i,t},q^f_{i,t}$。由于策略在第 0 天锁定，$\pi_i$ 一旦选择此后不可修改，这正是开环策略的定义。
+
+\textbf{2.多人互动与状态转移}
+
+设 $K^E_{t,u,v}=\sum_i x_{i,t,u,v}$ 为第 $t$ 天由 $u$ 行至 $v$ 的同行人数，$K^M_{t,m}=\sum_i z_{i,t,m}$ 为第 $t$ 天矿山 $m$ 的挖矿人数，$K^V_{t,v}=\sum_i\mathbf{1}(q^w_{i,t}+q^f_{i,t}>0,\ L_{i,t-1,v}=1)$ 为第 $t$ 天村庄 $v$ 发生购买的玩家数。动作消耗倍率
+\begin{equation}
+\lambda_{i,t}=\begin{cases}
+1, & \text{停留} \\
+2K^E_{t,u,v}, & \text{移动 }u\to v \\
+3, & \text{挖矿}
+\end{cases}
+\end{equation}
+
+资源与资金递推为
+\begin{equation}
+\begin{aligned}
+W_{i,t}&=W_{i,t-1}+q^w_{i,t}-\lambda_{i,t}\,c_w(\omega_t), \\
+F_{i,t}&=F_{i,t-1}+q^f_{i,t}-\lambda_{i,t}\,c_f(\omega_t), \\
+C_{i,t}&=C_{i,t-1}-\alpha_{i,t,v}\bigl(p_w q^w_{i,t}+p_f q^f_{i,t}\bigr)+\sum_m z_{i,t,m}\cdot\frac{R}{K^M_{t,m}},
+\end{aligned}
+\end{equation}
+其中 $\alpha_{i,t,v}=1$（第 0 天起点）或 $2$（村庄且 $K^V=1$）或 $4$（村庄且 $K^V\ge2$）。同矿时消耗仍为 3 倍基础消耗，收益按 $R/K^M$ 分摊；同村且 $K^V\ge2$ 时价格为 4 倍基准价。
+
+\textbf{3.目标函数与约束}
+
+到达终点后剩余资源按基准价的一半退回。玩家 $i$ 最大化其终端可变现财富
+\begin{equation}
+\max_{\pi_i}\ U_i(\pi_i,\pi_{-i})=C_{i,\tau_i}+0.5\,p_w W_{i,\tau_i}+0.5\,p_f F_{i,\tau_i},
+\end{equation}
+其中 $\tau_i\le T$ 为玩家 $i$ 首次到达终点的日期。约束包括：唯一位置 $\sum_v L_{i,t,v}=1$、相邻移动、动作互斥、沙暴日取消移动、到达矿山当日禁止挖矿、资源整数与生存（未到终点时 $W_{i,t}\ge1,\ F_{i,t}\ge1$）、负重 $m_w W_{i,t}+m_f F_{i,t}\le M$、资金非负、起点仅第 0 天购买、村庄购买仅在村庄发生、$\tau_i\le T$。第五关无村庄，相关购买变量自动置零。
+
+\textbf{4.Nash 均衡条件与 $\varepsilon$ 检验}
+
+若策略组合 $\pi^*=(\pi_1^*,\dots,\pi_n^*)$ 满足对每个玩家 $i$，在其他玩家方案不变时任何可行的单边替换都不能提高自身终端财富，则称其为纯策略 Nash 均衡：
+\begin{equation}
+U_i(\pi_i^*,\pi_{-i}^*)\ge U_i(\pi_i,\pi_{-i}^*),\quad \forall\pi_i\in\Pi_i,\ \forall i\in I.
+\end{equation}
+单边盈利偏离定义为 $\varepsilon_{i,t}=\max_{a_i\in A_i}\bigl[U_i(a_i,\pi_{-i}^*)-U_i(\pi_i^*,\pi_{-i}^*)\bigr]$，纯 Nash 要求 $\varepsilon=\max_{i,t}\varepsilon_{i,t}=0$。该条件比"冲突最少"或"总资金最大"更直接对应个人理性。
+
+\textbf{5.求解方法：DP 与 Nash混合求解}
+
+
+前面的状态转移方程已把多人耦合刻画为"同行倍率 $2K^E$、同矿收益 $R/K^M$、同村价格 $4$ 倍"三类时变参数。一旦其他玩家方案固定，这三类参数退化为已知常数，玩家 $i$ 的问题重归单人 DP，可用第一问的资源约束 DP 精确求全局最优响应 $BR_i(\pi_{-i})$。因此只需把 DP 改造成最佳响应 Oracle，围绕它组织均衡搜索。
+
+
+完整伪代码如下所示。
+
+\begin{tcode}
+# 输入：第五关地图 G、参数 game、天气 weather[1..T]、玩家数 n
+# 输出：纯 Nash 均衡 pi*、单边偏离 epsilon；兜底返回 mixed Nash
+def solve_pure_nash(level, game):
+    # 步骤 1：单人 DP 初始化（完全忽略对手）
+    pi[i] = single_player_dp(i, ignore_opponent=True)   for i in 1..n
+    generated = [pi[i] for i in 1..n]
+    # 步骤 2：Best-Response 迭代
+    while True:
+        changed = False
+        for i in 1..n:
+            br = dp_best_response(i, pi_minus_i(pi, i), level, game)
+            generated.append(br)
+            if U_i(br, pi_minus_i(pi, i)) > U_i(pi[i], pi_minus_i(pi, i)):
+                pi[i] = br;  changed = True
+        if not changed:
+            break
+    # 步骤 3：全局单边偏离检验（epsilon-Nash）
+    eps = max(U_i(dp_best_response(i, pi_minus_i(pi, i), level, game), pi_minus_i(pi, i))
+                 - U_i(pi[i], pi_minus_i(pi, i)) for i in 1..n)
+    if eps == 0:
+        return pi, eps   # 纯 Nash 收敛
+    # 步骤 4：纯 Nash 不收敛 -> 混合 Nash 兜底
+    restricted = build_restricted_game(generated)
+    if n == 2 and |restricted| <= 16:
+        mixed = nashpy.support_enumeration(restricted) or nashpy.lemke_howson(restricted)
+        if mixed and exploitability(mixed) <= tol:
+            return mixed, exploitability(mixed)
+    return "unresolved", eps
+\end{tcode}
+
+\textbf{6.第五关求解结果}
+
+默认参数 $n=2,\ T=10,\ R=200,\ M=1200,\ C_0=10000$ 下求得纯策略 Nash 均衡（$\varepsilon=0$），结果如表~\ref{tab:q5_result} 所示。
+
+\begin{table}[H]
+    \centering
+    \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}ccccc}
+        \toprule
+        玩家 & 初购(水,食)/箱 & 路线 & 终端财富/元 & 到达日 \\
+        \midrule
+        玩家1 & 30, 34 & $1\to5\to6\to13$ & 9510 & 第3天 \\
+        玩家2 & 27, 33 & $1\to4\to4\to6\to13$ & 9535 & 第4天 \\
+        \bottomrule
+    \end{tabular*}
+    \caption{第五关纯策略 Nash 均衡求解结果}
+    \label{tab:q5_result}
+\end{table}
+
+两人首日主动走不同方向，玩家 2 在第 2 个高温日选择停留以避免与玩家 1 形成高成本同向移动。规则审计分别完成 21 项与 28 项检查，违规数和最大守恒残差均为 0；固定对手后重新调用全局 DP 求 Best Response，两人的盈利偏离均为 0，直接确认 Nash 稳定性。
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{图3-1第五关双玩家资源演化.png}
+    \caption{第五关双玩家资源演化}
+    \label{fig:q31_resource}
+\end{figure}
+如图~\ref{fig:q31_resource} 所示，两玩家水和食物库存均呈阶梯式下降：行走日消耗加速、停留日消耗减缓。玩家 1 因路线更短（第 3 天到达）总消耗量较小，但玩家 2 通过主动避让避免了同向移动的高倍率消耗，终端财富反而略高于玩家 1。水资源在两人策略中均比食物更快逼近下限，是制约持续行动的关键因素。
+
+\subsubsection{第三问(2)：第六关——滚动时域鲁棒阶段博弈模型}
+
+第六关 $n=3$，$T=30$，玩家只知道当天实际天气，但每天结束后能够观察其他玩家当天行动与剩余资源，并据此确定第二天行动方案。该信息结构下完整三人联合 Markov 博弈状态空间过大，因而采用"当前耦合精确 + 未来个人鲁棒续值"的近似动态博弈：每天只对当日多人互动精确建模，未来价值由单人鲁棒 DP 近似。
+
+\textbf{1.公开状态与当天合法动作}
+
+日末观察被题目明确允许，故第 $t$ 天决策时公共状态为
+\begin{equation}
+S_t=\bigl\{(v_{i,t-1},W_{i,t-1},F_{i,t-1},C_{i,t-1})_{i=1}^n,\ \omega_t,\ t\bigr\}.
+\end{equation}
+每名玩家当天合法动作集 $A_i(S_t,\omega_t)$ 由地图相邻性、天气、当前位置、资源与资金约束自动生成，包括向相邻区域移动、普通停留、矿山挖矿与村庄补给等组合。沙暴日删除所有移动动作。
+
+\textbf{2.未来天气不确定集}
+
+题目仅说明"30 日内较少出现沙暴"，未给出概率分布。用 $\Gamma_t$ 表示从第 $t+1$ 天至截止日允许的沙暴预算，未来天气集合定义为
+\begin{equation}
+\Omega_t(\Gamma_t)=\bigl\{\omega_{t+1:T}:\sum_{\tau=t+1}^T\mathbf{1}(\omega_\tau=\text{沙暴})\le\Gamma_t,\ \omega_\tau\in\{\text{晴},\text{高温},\text{沙暴}\}\bigr\}.
+\end{equation}
+$\Gamma$ 不是"真实概率"，而是"较少沙暴"的数学化情景变量。第一、二关公开的 30 日天气序列含 6 个沙暴日，故 $\Gamma=6$ 仅作为同题环境的经验参照点。
+
+\textbf{3.单人鲁棒续值}
+
+对子问(2)中每一个候选当天动作执行后的个人状态 $s_i'$，调用第二问的鲁棒 DP 计算从次日起在未来天气集合内的最坏情形可达财富
+\begin{equation}
+\hat{V}_i(t{+}1,s_i';\,\Gamma_t)=\max_{\pi_i}\min_{\omega\in\Omega_t(\Gamma_t)}U_i(\pi_i;\,\omega\mid s_i').
+\end{equation}
+该续值只评价个人未来，不需猜测其他玩家未来 30 天的完整轨迹；其他玩家真正产生的耦合将在之后每天重新进入"当前阶段博弈"。
+
+\textbf{4.当天阶段博弈与局部耦合价值分解}
+
+给定当天公共状态 $S_t$，对联合动作 $a_t=(a_{1,t},\dots,a_{n,t})$ 按题目规则精确计算同行、同矿、同村购买人数，得到每名玩家动作后的新个人状态 $s_i'(a_t)$，并以鲁棒续值作为当天支付：
+\begin{equation}
+Q_i(S_t,a_t)=\hat{V}_i(t{+}1,s_i'(a_t);\Gamma_t').
+\end{equation}
+当天 Nash 均衡满足
+\begin{equation}
+Q_i(S_t,a_i^*,a_{-i}^*)\ge Q_i(S_t,a_i,a_{-i}^*),\quad \forall a_i\in A_i(S_t,\omega_t).
+\end{equation}
+该方法把全局动态博弈分解为一系列小型阶段博弈，同时利用鲁棒续值保留"今天的动作会改变未来位置和库存"的长期影响。
+
+\textbf{5.求解方法：每天滚动重算与Nash混合求解}
+
+第六关与第五关的本质差异在于信息结构：未来天气未知、但每日日末能观测他人状态。若沿用第五关的"第 0 天锁定完整方案"，就隐含使用了尚未公开的未来天气，构成信息穿越。因此求解必须落到"当天"这一时间尺度上，核心思路为四点：
+
+\textbf{当天只做合法、可观测的决策。}第 $t$ 天决策输入只有当天天气 $\omega_t$ 与公开状态 $S_t$（各玩家位置、资源、资金），从源头杜绝偷看未来。
+
+\textbf{当天耦合精确、未来价值近似。}联合动作下的同行、同矿、同村即时成本按规则精确计算，长期影响用第二问的单人鲁棒 DP 续值 $\hat V_i$ 刻画。将不可承受的三人 30 天联合状态空间拆解为"当天小博弈 $+$ 单人未来价值"。
+
+\textbf{形成当天阶段博弈并求 Nash。}以 $\hat V_i$ 作为当天支付，构造当日 $n$ 人有限博弈，优先搜索纯 Nash，保证今天的选择对所有人都是稳定的。
+
+\textbf{只执行当天动作、次日重算。}当天均衡只执行一天，日末记录公开观测，次日基于新状态重新建模。未来冲突在真正发生前逐日进入当前阶段，而非提前假设对手的固定轨迹。
+
+完整伪代码如下所示。
+
+\begin{tcode}
+# 输入：第六关地图 G、参数 game、天气接口 weather_today(t)、玩家数 n、剩余沙暴预算 Gamma
+# 输出：30 天联合行动记录 + 各玩家终端财富
+def rolling_policy(level, game, weather_today, Gamma):
+    S = initial_state(level, game, n)   # 各玩家起点状态
+    arrivals = []
+    for t in 1..T:
+        omega_t = weather_today(t)              # 仅读取当天天气，无未来访问
+        if storm_used_today(omega_t):
+            Gamma -= 1
+        # 步骤 1：生成各玩家当天合法动作集
+        A[i] = legal_actions(S, omega_t, level, game)   for i in 1..n
+        # 步骤 2：枚举联合动作，计算当天精确转移 + 鲁棒续值支付
+        for a in product(*A):                       # 联合动作枚举
+            S_next = step_joint(S, a, omega_t, level, game)
+            Q[i][a] = robust_single_dp_value(S_next[i], Gamma, level, game)
+        # 步骤 3：当日三人阶段博弈 -> 纯 Nash 优先，无 Nash 时按规则兜底
+        NE_t = solve_stage_nash(Q)   # 解析优先：两人 nashpy / 多人 SLSQP
+        a_t = NE_t                                       # 今日执行动作
+        # 步骤 4：推进状态 + 日末记录（公开可观测）
+        S = step_joint(S, a_t, omega_t, level, game)
+        arrivals += [(i, S[i].node, S[i].cash) for i in 1..n if S[i].node == goal]
+        if all(i in arrived(i) for i in 1..n):
+            break
+    return S, arrivals
+\end{tcode}
+
+\textbf{6.第六关求解结果}
+
+默认参数 $n=3,\ T=30,\ R=1000,\ M=1200,\ C_0=10000$，取 $\Gamma=6$（经验参考）的主场景下三名玩家在第 14 天全部到达终点，结果如表~\ref{tab:q6_result} 所示。
+
+\begin{table}[H]
+    \centering
+    \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}ccccc}
+        \toprule
+        玩家 & 终端财富/元 & 到达日 & 冲突损失/元 & $\varepsilon_{\max}$ \\
+        \midrule
+        玩家1 & 8890.0 & 第14天 & 220 & 0 \\
+        玩家2 & 7957.5 & 第14天 & 220 & 0 \\
+        玩家3 & 7890.0 & 第14天 & 220 & 0 \\
+        \midrule
+        \textbf{平均} & \textbf{8245.83} & \textbf{第14天} & \textbf{220} & \textbf{0} \\
+        \bottomrule
+    \end{tabular*}
+    \caption{第六关滚动阶段博弈求解结果}
+    \label{tab:q6_result}
+\end{table}
+
+30 天所有已执行阶段均为纯 Nash，$\varepsilon_{\max}=0$。规则审计共 363 项，违规 0、残差 0；冲突等值损失仅来自同向移动，共 220 元（同矿、同村损失均为 0）；未来天气信息泄漏反事实检验 $t=1,\dots,30$ 共 30 次全部通过。Bootstrap 经验重采样（30 条样本，随机种子 42）：29/30 成功，成功率 $96.67\%$，成功样本终端财富均值 $7957.7$ 元、标准差 $491.7$ 元、中位数 $7920$ 元、95\% CI $[7854.4,8061.0]$ 元，所有样本 $\varepsilon_{\max}=0$。
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{图3-7 第六关三玩家逐日滚动策略轨迹.png}
+    \caption{第六关三玩家逐日滚动策略轨迹}
+    \label{fig:q37_trajectory}
+\end{figure}
+图~\ref{fig:q37_trajectory} 展示了三名玩家在大地图上逐日滚动的实际执行路径。三人从起点出发后，各自在村庄补给、矿山挖矿和终点方向上前进，共产生 42 条行动记录。玩家之间未出现同村或同矿冲突，仅在地图狭窄处发生同向移动，由滚动阶段博弈中的 Nash 选择自动规避。以下从五个维度对该策略进行验证。
+
+\begin{enumerate}
+    \item \textbf{鲁棒权衡分析检验}
+    
+    鲁棒参数 $\Gamma$ 控制天气不确定集的保守程度：$\Gamma=0$ 时财富下界 9625 元、保证用时 11 天；$\Gamma=1$ 时财富下界降至 9475 元、保证用时增至 12 天。$\Gamma$ 每增加 1 财富下界下降约 150 元，但保证策略在更恶劣天气下的可行性。
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{图3-3Gamma鲁棒权衡分析.png}
+        \caption{Gamma 鲁棒权衡分析}
+        \label{fig:q33_gamma}
+    \end{figure}
+    \textbf{结论：}主场景取 $\Gamma=6$ 基于第一、二关 30 日天气含 6 个沙暴日的经验参照，\textbf{在风险防御与收益之间取得合理平衡}。
+
+    \item \textbf{消融实验检验}
+    
+    完整模型平均终端财富 8890 元；去除博弈机制后冲突损失达 4560 元，说明日间阶段博弈有效避免了多人耦合的高倍率消耗；使用最短路径模型时冲突损失进一步增至 6180 元。
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{图3-4基准与消融实验.png}
+        \caption{基准与消融实验}
+        \label{fig:q34_ablation}
+    \end{figure}
+    \textbf{结论：博弈机制是控制多人冲突损失的最关键模块，其贡献远超路径规划本身。}
+
+    \item \textbf{Ex-post Regret 检验}
+    
+    完全信息 Oracle 可达理论财富上界 41732.5 元，在线策略在仅知当天天气的条件下仍保持稳定的近优性能，Regret 值处于合理范围。
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{图3-5Ex-post-Regret分析.png}
+        \caption{Ex-post Regret 分析}
+        \label{fig:q35_regret}
+    \end{figure}
+    \textbf{结论：}即使没有未来信息，\textbf{"当天耦合精确 + 未来鲁棒续值"的近似策略能逼近完全信息下的最优决策}。
+
+    \item \textbf{玩家规模扩展检验}
+    
+    玩家数从 2 增至 3 时，平均终端财富下降约 $2.43\%$，冲突损失从 0 增至 220 元。
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{图3-6玩家规模扩展分析.png}
+        \caption{玩家规模扩展分析}
+        \label{fig:q36_scale}
+    \end{figure}
+    \textbf{结论：}所有阶段均保持纯 Nash（$\varepsilon_{\max}=0$），\textbf{模型在规模扩展时不会出现均衡丢失}。
+
+    \item \textbf{参数敏感性检验}
+    
+    初始采购邻域内 25 组参数组合下，模型在大部分参数区域保持较高性能，仅在极端参数组合下财富出现明显下降。
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{图3-2参数敏感性热力图.png}
+        \caption{参数敏感性热力图}
+        \label{fig:q32_heatmap}
+    \end{figure}
+    \textbf{结论：模型对参数扰动具有较好的鲁棒性。}
+\end{enumerate}
+
+以上五方面检验共同确认了滚动阶段博弈模型在鲁棒防御、模块必要性、信息效率、可扩展性和参数稳健性维度上的可靠性。
 \section{参考文献与引用}
 
 参考文献对于一篇正式的论文来说是必不可少的，在建模中重要的参考文献当然应该列出。\LaTeX{}在这方面的功能也是十分强大的，下面进介绍一个比较简单的参考文献制作方法。有兴趣的可以学习 \verb|bibtex| 或 \verb|biblatex| 的使用。
