@@ -48,19 +48,20 @@
         "water": 178,
         "food": 333
       },
-      "求解状态": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "求解状态": "MILP 收敛",
       "全局最优": true,
-      "运行时间秒": 9.600782,
+      "运行时间秒": 9.32714,
       "统计": {
-        "variables": 5012,
-        "constraints": 1924,
-        "mip_nodes": 42,
-        "mip_gap": 0.0,
-        "solver_objective_twice": 20940.000000000004,
+        "变量总数": 5012,
+        "约束总数": 1924,
+        "MIP 节点数": 42,
+        "MIP 间隙": 0.0,
+        "求解器目标值(2Z)": 20940.000000000004,
+        "终端现金": 10470,
         "terminal_cash": 10470,
-        "terminal_water": 0,
-        "terminal_food": 0,
-        "solver": "SciPy milp / HiGHS"
+        "终端水量": 0,
+        "终端食物量": 0,
+        "求解器": "SciPy milp / HiGHS"
       },
       "逐日策略": [
         {
@@ -361,19 +362,20 @@
         "water": 130,
         "food": 405
       },
-      "求解状态": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "求解状态": "MILP 收敛",
       "全局最优": true,
-      "运行时间秒": 22.749715,
+      "运行时间秒": 21.030823,
       "统计": {
-        "variables": 13779,
-        "constraints": 4144,
-        "mip_nodes": 25,
-        "mip_gap": 0.0,
-        "solver_objective_twice": 25460.0,
+        "变量总数": 13779,
+        "约束总数": 4144,
+        "MIP 节点数": 25,
+        "MIP 间隙": 0.0,
+        "求解器目标值(2Z)": 25460.0,
+        "终端现金": 12730,
         "terminal_cash": 12730,
-        "terminal_water": 0,
-        "terminal_food": 0,
-        "solver": "SciPy milp / HiGHS"
+        "终端水量": 0,
+        "终端食物量": 0,
+        "求解器": "SciPy milp / HiGHS"
       },
       "逐日策略": [
         {
