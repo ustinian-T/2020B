@@ -4,7 +4,29 @@
 \usepackage{url}   % 网页链接
 \usepackage{subcaption} % 子标题
 \usepackage{caption}  % 自定义标题格式（用于附录表标题左对齐）
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{amsmath}
+\floatname{algorithm}{算法}
+\renewcommand{\algorithmicrequire}{\textbf{输入：}}
+\renewcommand{\algorithmicensure}{\textbf{输出：}}
 \usepackage{cite}  % 文献引用编号压缩排序
+\usepackage{listings}
+\usepackage{xcolor}
+\lstset{
+    basicstyle=\footnotesize\ttfamily,
+    breaklines=true,
+    frame=single,
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    keywordstyle=\color{blue},
+    commentstyle=\color{green!50!black},
+    stringstyle=\color{red!70!black},
+    tabsize=4,
+    showstringspaces=false,
+    xleftmargin=2em,
+    framexleftmargin=2em,
+}
 
 % 公式编号按节自动编号：(5.1)(5.2)……；图表编号同样跟随节（图5.1、表5.1）
 \numberwithin{equation}{section}
@@ -17,8 +39,8 @@
 
 % 第一问、第二问增强图表所在目录
 \graphicspath{{../求解代码/第一问/figures_enhanced/}{../求解代码/第二问/figures_enhanced/}{../求解代码/第三问（1）/03图片输出/}{../求解代码/第三问（2）/03图片输出/}}
-\title{基于模型的问题研究}
-\tihao{A}
+\title{基于动态规划模型的沙漠穿越最优策略研究}
+\tihao{B}
 \baominghao{xxxx}
 \schoolname{XX大学}
 \membera{ }
@@ -38,10 +60,20 @@
 \end{center}
 
  \begin{abstract}
-    本文针对穿越沙漠的小游戏进行研究。
+     针对穿越沙漠这一具有有期限、位置离散、资源受限、天气不确定与多人参与耦合等特征的最优决策问题，本文综合建立沙漠穿越最优决策模型，并基于混合整数线性规划、Bellman递推、情景树展开与Nash均衡搜索等方法进行了求解。
 
-\keywords{\TeX{}\quad  图片\quad   表格\quad  公式}
-\end{abstract}
+     \textbf{针对问题一}，主要解决在一个人已知全局天气地图以及资源的前提下，进行沙漠穿越的最优决策问题，本文首先将两关的地图转换为邻接矩阵，并且运用BFS最短路对地图完整性、连通性进行了预处理，然后分析题目的约束规则，进而建立了以日末状态为核心的\textbf{天气已知动态决策模型}，最后利用与该模型数学等价的\textbf{HiGHS混合整数线性规划（}MILP\textbf{）算法}进行求解，最优结果为，第一关在\textbf{第24天}到达终点，最后\textbf{剩余10470元}，第二关在\textbf{第30天}到达终点，最后\textbf{剩余12730元}。
+
+     \textbf{针对问题二}，主要解决在一个人仅知道当天天气的前提下，进行沙漠穿越的最优决策问题，本文在游戏规则的约束下，对均值与最坏情况下均进行分析，建立了\textbf{未知天气鲁棒决策模型}，对第三关依旧采用与该模型数学等价的\textbf{HiGHS情景树MILP}\textbf{进行求解}，对第四关采用沙暴停留、非沙暴最短路测算的鲁棒安全策略。结果表明，第三关在1024个情景上\textbf{全部于第3天到达终点}，最坏的情况下\textbf{剩余9190元}、\textbf{平均剩余9310元}；第四关在10000个\textbf{Markov抽样}天气序列上方案\textbf{成功率达98.84\%}、\textbf{平均剩余7489.81元}、最坏的情况下\textbf{剩余6940元}。
+
+     \textbf{针对问题三的第一子问}主要解决在2名玩家已知全局天气的前提下，进行沙漠穿越的最优决策问题，本文首先将同向同行与同矿两类对手资源冲突约束添加至第一问的\textbf{天气已知动态决策模型}，进而建立了双人竞争博弈决策模型，对每一位玩家运用\textbf{HiGHS混合整数线性规划（}MILP\textbf{）算法}求解，最后利用\textbf{Best-Response迭代求纯Nash均衡}，得到一位玩家最后\textbf{剩余9510元}，一位玩家\textbf{剩余9535元}为最佳答案。
+
+     \textbf{对于第二子问}，主要解决在3名玩家仅知道当天天气的前提下，进行沙漠穿越的最优决策问题，增加对应的多人游戏约束之后，在第二问的基础上，进而建立三人竞争博弈决策模型，通过枚举所有玩家的候选动作，构造有限战略式博弈，运用每日阶段博弈和滚动重算求解，该方案在\textbf{Markov抽样}天气序列上\textbf{成功率为96.67\%}、平\textbf{均财富7957.70元}。
+
+     最后我们对模型进行了鲁棒性和灵敏性检验，发现模型具有良好的鲁棒性，同时我们也对模型的优缺点进行评价。
+
+\keywords{动态规划\quad 混合整数线性规划\quad Best-Response迭代\quad 博弈论}
+ \end{abstract}
 
 \section{问题重述}
 
@@ -802,44 +834,57 @@ U_i(\pi_i^*,\pi_{-i}^*)\ge U_i(\pi_i,\pi_{-i}^*),\quad \forall\pi_i\in\Pi_i,\ \f
 
     \item \textbf{求解方法：DP 与 Nash 混合求解}
 
-\hspace*{2em}前面的状态转移方程已把多人耦合刻画为"同行倍率 $2K^E$、同矿收益 $R/K^M$、同村价格 $4$ 倍"三类时变参数。一旦其他玩家方案固定，这三类参数退化为已知常数，玩家 $i$ 的问题重归单人 DP，可用第一问的资源约束 DP 精确求全局最优响应 $BR_i(\pi_{-i})$。因此只需把 DP 改造成最佳响应 Oracle，围绕它组织均衡搜索。
 
 \hspace*{2em}完整伪代码如下所示。
 
-\begin{tcode}
-# 输入：第五关地图 G、参数 game、天气 weather[1..T]、玩家数 n
-# 输出：纯 Nash 均衡 pi*、单边偏离 epsilon；兜底返回 mixed Nash
-def solve_pure_nash(level, game):
-    # 步骤 1：单人 DP 初始化（完全忽略对手）
-    pi[i] = single_player_dp(i, ignore_opponent=True)   for i in 1..n
-    generated = [pi[i] for i in 1..n]
-    # 步骤 2：Best-Response 迭代
-    while True:
-        changed = False
-        for i in 1..n:
-            br = dp_best_response(i, pi_minus_i(pi, i), level, game)
-            generated.append(br)
-            if U_i(br, pi_minus_i(pi, i)) > U_i(pi[i], pi_minus_i(pi, i)):
-                pi[i] = br;  changed = True
-        if not changed:
-            break
-    # 步骤 3：全局单边偏离检验（epsilon-Nash）
-    eps = max(U_i(dp_best_response(i, pi_minus_i(pi, i), level, game), pi_minus_i(pi, i))
-                 - U_i(pi[i], pi_minus_i(pi, i)) for i in 1..n)
-    if eps == 0:
-        return pi, eps   # 纯 Nash 收敛
-    # 步骤 4：纯 Nash 不收敛 -> 混合 Nash 兜底
-    restricted = build_restricted_game(generated)
-    if n == 2 and |restricted| <= 16:
-        mixed = nashpy.support_enumeration(restricted) or nashpy.lemke_howson(restricted)
-        if mixed and exploitability(mixed) <= tol:
-            return mixed, exploitability(mixed)
-    return "unresolved", eps
-\end{tcode}
+\begin{algorithm}[H]
+\caption{第五关 DP--Nash 混合求解}
+{\small
+\begin{algorithmic}[1]
+\Require $G,\ game,\ weather[1\ldots T],\ n$
+\Ensure $\pi^*,\ \varepsilon$；若无纯 Nash，则返回 $\sigma^*,\ \varepsilon$
+\State \textbf{步骤1：} $\pi[i]\leftarrow\text{single\_player\_dp}(i,\mathrm{ignore\_opponent=True}),\quad \text{generated}\leftarrow[\pi[1],\ldots,\pi[n]]$
+\While{\textbf{步骤2：} not converged}
+    \State $\text{changed}\leftarrow\mathrm{False}$
+    \For{$i=1,\ldots,n$}
+        \State $\mathrm{br}\leftarrow\text{dp\_best\_response}(i,\pi_{-i},\text{level},\text{game});\quad\text{generated.append(br)}$
+        \If{$U_i(\mathrm{br},\pi_{-i})>U_i(\pi[i],\pi_{-i})$}
+            \State $\pi[i]\leftarrow\mathrm{br};\quad\text{changed}\leftarrow\mathrm{True}$
+        \EndIf
+    \EndFor
+    \If{not changed}
+        \State break
+    \EndIf
+\EndWhile
+\State \textbf{步骤3：} \Return $\pi,\ \varepsilon\leftarrow0$
+\State \textbf{步骤4：} $\text{restricted}\leftarrow\text{build\_restricted\_game}(\text{generated})$
+\State $\text{mixed}\leftarrow\text{nashpy.support\_enumeration}(\text{restricted})$
+\If{$\text{mixed}=\varnothing$}
+    \State $\text{mixed}\leftarrow\text{nashpy.lemke\_howson}(\text{restricted})$
+\EndIf
+\If{$n=2\ \text{and}\ \lvert\text{restricted}\rvert\leq16\ \text{and}\ \text{mixed}\neq\varnothing\ \text{and}\ \operatorname{exploitability}(\text{mixed})\leq tol$}
+    \State \Return $\text{mixed},\ \operatorname{exploitability}(\text{mixed})$
+\EndIf
+\State \Return $\text{unresolved},\ \varepsilon$
+\end{algorithmic}
+}
+\label{alg:q31_nash}
+\end{algorithm}
+
+\hspace*{2em}前面的状态转移方程已把多人耦合刻画为"同行倍率 $2K^E$、同矿收益 $R/K^M$、同村价格 $4$ 倍"三类时变参数。一旦其他玩家方案固定，这三类参数退化为已知常数，玩家 $i$ 的问题重归单人 DP，可用第一问的资源约束 DP 精确求全局最优响应 $BR_i(\pi_{-i})$。因此只需把 DP 改造成最佳响应 Oracle，围绕它组织均衡搜索。
+
 
     \item \textbf{第五关求解结果}
 
 \hspace*{2em}默认参数 $n=2,\ T=10,\ R=200,\ M=1200,\ C_0=10000$ 下求得纯策略 Nash 均衡（$\varepsilon=0$），结果如表~\ref{tab:q5_result} 所示。
+
+    \begin{figure}[H]
+    \centering
+    \includegraphics[width=0.5\textwidth]{第五关双人策略示意图.png}
+    \caption{第五关双人策略示意图}
+    \label{fig:q31_resource}
+\end{figure}
+
 
 
 \begin{table}[H]
@@ -858,7 +903,9 @@ def solve_pure_nash(level, game):
 \end{table}
 
 \hspace*{2em}两人首日主动走不同方向，玩家 2 在第 2 个高温日选择停留以避免与玩家 1 形成高成本同向移动。规则审计分别完成 21 项与 28 项检查，违规数和最大守恒残差均为 0；固定对手后重新调用全局 DP 求 Best Response，两人的盈利偏离均为 0，直接确认 Nash 稳定性。
-\end{enumerate}
+
+
+\hspace*{2em}如图~\ref{fig:q31_resource} 所示，两玩家水和食物库存均呈阶梯式下降：行走日消耗加速、停留日消耗减缓。玩家 1 因路线更短（第 3 天到达）总消耗量较小，但玩家 2 通过主动避让避免了同向移动的高倍率消耗，终端财富反而略高于玩家 1。水资源在两人策略中均比食物更快逼近下限，是制约持续行动的关键因素。
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.85\textwidth]{图3-1第五关双玩家资源演化.png}
@@ -866,8 +913,7 @@ def solve_pure_nash(level, game):
     \label{fig:q31_resource}
 \end{figure}
 
-\hspace*{2em}如图~\ref{fig:q31_resource} 所示，两玩家水和食物库存均呈阶梯式下降：行走日消耗加速、停留日消耗减缓。玩家 1 因路线更短（第 3 天到达）总消耗量较小，但玩家 2 通过主动避让避免了同向移动的高倍率消耗，终端财富反而略高于玩家 1。水资源在两人策略中均比食物更快逼近下限，是制约持续行动的关键因素。
-
+\end{enumerate}
 \subsubsection{第三问问题二：第六关——滚动时域鲁棒阶段博弈模型}
 
 第六关 $n=3$，$T=30$，玩家只知道当天实际天气，但每天结束后能够观察其他玩家当天行动与剩余资源，并据此确定第二天行动方案。该信息结构下完整三人联合 Markov 博弈状态空间过大，因而采用"当前耦合精确 + 未来个人鲁棒续值"的近似动态博弈：每天只对当日多人互动精确建模，未来价值由单人鲁棒 DP 近似。
@@ -926,32 +972,37 @@ Q_i(H_t,a_i^*,a_{-i}^*)\ge Q_i(H_t,a_i,a_{-i}^*),\quad \forall a_i\in A_i(H_t,\o
 
 \hspace*{2em}完整伪代码如下所示。
 
-\begin{tcode}
-# 输入：第六关地图 G、参数 game、天气接口 weather_today(t)、玩家数 n、剩余沙暴预算 Gamma
-# 输出：30 天联合行动记录 + 各玩家终端财富
-def rolling_policy(level, game, weather_today, Gamma):
-    S = initial_state(level, game, n)   # 各玩家起点状态
-    arrivals = []
-    for t in 1..T:
-        omega_t = weather_today(t)              # 仅读取当天天气，无未来访问
-        if storm_used_today(omega_t):
-            Gamma -= 1
-        # 步骤 1：生成各玩家当天合法动作集
-        A[i] = legal_actions(S, omega_t, level, game)   for i in 1..n
-        # 步骤 2：枚举联合动作，计算当天精确转移 + 鲁棒续值支付
-        for a in product(*A):                       # 联合动作枚举
-            S_next = step_joint(S, a, omega_t, level, game)
-            Q[i][a] = robust_single_dp_value(S_next[i], Gamma, level, game)
-        # 步骤 3：当日三人阶段博弈 -> 纯 Nash 优先，无 Nash 时按规则兜底
-        NE_t = solve_stage_nash(Q)   # 解析优先：两人 nashpy / 多人 SLSQP
-        a_t = NE_t                                       # 今日执行动作
-        # 步骤 4：推进状态 + 日末记录（公开可观测）
-        S = step_joint(S, a_t, omega_t, level, game)
-        arrivals += [(i, S[i].node, S[i].cash) for i in 1..n if S[i].node == goal]
-        if all(i in arrived(i) for i in 1..n):
-            break
-    return S, arrivals
-\end{tcode}
+\begin{algorithm}[htbp]
+\caption{第六关每天滚动重算与 Nash 混合求解伪代码}
+{\small
+\begin{algorithmic}[1]
+\Require $G,\ game,\ \text{weather\_today}(t),\ n,\ \Gamma$
+\Ensure 30 天联合行动记录 $\mathcal{A}$，各玩家终端财富 $U_1,\ldots,U_n$
+\State $S\leftarrow\text{initial\_state}(\text{level},\text{game},n)$
+\For{$t=1,\ldots,T$}
+    \State $\omega_t\leftarrow\text{weather\_today}(t)$
+    \If{$\omega_t=\text{沙暴}$} \State $\Gamma\leftarrow\Gamma-1$ \EndIf
+    \State \textbf{步骤1：} 生成各玩家当天合法动作集
+    \For{$i=1,\ldots,n$}
+        \State $A[i]\leftarrow\text{legal\_actions}(S,\omega_t,\text{level},\text{game})$
+    \EndFor
+    \State \textbf{步骤2：} 枚举联合动作，计算鲁棒续值支付
+    \For{$a\in\text{product}(A[1],\ldots,A[n])$}
+        \State $S_{\text{next}}\leftarrow\text{step\_joint}(S,a,\omega_t,\text{level},\text{game})$
+        \For{$i=1,\ldots,n$}
+            \State $Q[i][a]\leftarrow\text{robust\_single\_dp\_value}(S_{\text{next}}[i],\Gamma,\text{level},\text{game})$
+        \EndFor
+    \EndFor
+    \State \textbf{步骤3：} 求解当天阶段 Nash 均衡并执行
+    \State $a_t\leftarrow\text{solve\_stage\_nash}(Q)$
+    \State $S\leftarrow\text{step\_joint}(S,a_t,\omega_t,\text{level},\text{game})$
+    \If{all players arrived} \State break \EndIf
+\EndFor
+\State \Return $S$
+\end{algorithmic}
+}
+\label{alg:q32_rolling_nash}
+\end{algorithm}
 
     \item \textbf{第六关求解结果}
 
@@ -993,7 +1044,7 @@ def rolling_policy(level, game, weather_today, Gamma):
 
     \begin{figure}[H]
         \centering
-        \includegraphics[width=0.85\textwidth]{图3-3Gamma鲁棒权衡分析.png}
+        \includegraphics[width=0.8\textwidth]{图3-3Gamma鲁棒权衡分析.png}
         \caption{Gamma 鲁棒权衡分析}
         \label{fig:q33_gamma}
     \end{figure}
@@ -1006,7 +1057,7 @@ def rolling_policy(level, game, weather_today, Gamma):
 
     \begin{figure}[H]
         \centering
-        \includegraphics[width=0.85\textwidth]{图3-4基准与消融实验.png}
+        \includegraphics[width=0.8\textwidth]{图3-4基准与消融实验.png}
         \caption{基准与消融实验}
         \label{fig:q34_ablation}
     \end{figure}
@@ -1019,7 +1070,7 @@ def rolling_policy(level, game, weather_today, Gamma):
 
     \begin{figure}[H]
         \centering
-        \includegraphics[width=0.85\textwidth]{图3-5Ex-post-Regret分析.png}
+        \includegraphics[width=0.8\textwidth]{图3-5Ex-post-Regret分析.png}
         \caption{Ex-post Regret 分析}
         \label{fig:q35_regret}
     \end{figure}
@@ -1045,7 +1096,7 @@ def rolling_policy(level, game, weather_today, Gamma):
 
     \begin{figure}[H]
         \centering
-        \includegraphics[width=0.85\textwidth]{图3-2参数敏感性热力图.png}
+        \includegraphics[width=0.8\textwidth]{图3-2参数敏感性热力图.png}
         \caption{参数敏感性热力图}
         \label{fig:q32_heatmap}
     \end{figure}
@@ -1128,7 +1179,32 @@ def rolling_policy(level, game, weather_today, Gamma):
 %附录
 \begin{appendices}
 \section{支撑材料列表}
+\begin{longtable}{p{0.2\textwidth} p{0.15\textwidth} p{0.58\textwidth}}
+\toprule
+文件名 & 类型 & 简介 \\
+\midrule
+\endfirsthead
+\multicolumn{3}{c}{附表（续）} \\
+\toprule
+文件名 & 类型 & 简介 \\
+\midrule
+\endhead
+\multicolumn{3}{r}{续下页} \\
+\endfoot
+\bottomrule
+\endlastfoot
+problem1.py & Python 代码 & 第一问求解：MILP 混合整数线性规划求解器（HiGHS），含地图预处理、动态规划、灵敏性分析 \\
+problem2.py & Python 代码 & 第二问求解：未知天气情景树 MILP 与鲁棒动态规划 \\
+problem3\_1.py & Python 代码 & 第三问（1）求解\\
+problem3\_2.py & Python 代码 & 第三问（2）求解 \\
+q1.m & MATLAB 代码 & 第一问论文图表生成 \\
+q2.m & MATLAB 代码 & 第二问论文图表生成 \\
+q3\_1.m & MATLAB 代码 & 第三问（1）论文图表生成 \\
+q3\_2.m & MATLAB 代码 & 第三问（2）论文图表生成 \\
+Result.xlsx & Excel 表格 & 四关最优结果汇总：逐日剩余资金、水量、食物量及位置信息 \\
+\end{longtable}
 
+\newpage
 \section{第一问两关逐日最优决策}
 {
 \begin{longtable}{cccccccc}
@@ -1233,8 +1309,27 @@ def rolling_policy(level, game, weather_today, Gamma):
 }
 
 \section{问题一代码}
+\lstinputlisting[language=Python, caption={第一问求解代码}, label={code:q1},
+    linerange={30-87,428-510}]
+    {../2020B最终支撑材料/problem1.py}
+\newpage
+
 \section{问题二代码}
+\lstinputlisting[language=Python, caption={第二问求解代码}, label={code:q2},
+    linerange={24-80,534-600}]
+    {../2020B最终支撑材料/problem2.py}
+\newpage
+
 \section{问题三代码}
+\subsection{第三问（1）代码}
+\lstinputlisting[language=Python, caption={第三问（1）求解代码——双人博弈}, label={code:q31},
+    linerange={19-128,737-830}]
+    {../2020B最终支撑材料/problem3_1.py}
+
+\subsection{第三问（2）代码}
+\lstinputlisting[language=Python, caption={第三问（2）求解代码——三人博弈}, label={code:q32},
+    linerange={23-86,131-262,1056-1125}]
+    {../2020B最终支撑材料/problem3_2.py}
 
 
 
