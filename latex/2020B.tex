@@ -187,7 +187,7 @@ $H_t$ & 第六关第 $t$ 天的公共状态 & --- \\
         \item\textbf{状态变量与价值函数}
         
         \hspace*{2em}以天为阶段，将玩家处境抽象为“日期---位置---水量---食物量”四元状态，现金不作为状态维度，而由价值函数保存：
-
+\vspace{-5pt}
 \begin{equation}
 S_t = (t,\ i_t,\ W_t,\ F_t)
 \label{eq:q1_state}
@@ -256,15 +256,15 @@ p_w\,w + p_f\,f \leq C_0,\quad m_w\,w + m_f\,f \leq M,\quad w,\ f \in \mathbb{Z}
 \label{eq:q1_consume}
 \end{equation}
 \begin{equation}
-\text{行走可行} \Leftrightarrow (i,j)\in E\text{ 且 }\omega_t \neq \text{沙暴}
+\text{行走可行 } \Leftrightarrow\; (i,j)\in E\ \text{且}\ \omega_t \neq \text{沙暴}
 \label{eq:q1_move}
 \end{equation}
 \begin{equation}
-\text{挖矿可行} \Leftrightarrow i \in V_m
+\text{挖矿可行 } \Leftrightarrow\; i \in V_m
 \label{eq:q1_mine}
 \end{equation}
 
-\hspace*{2em}其中，$c_w(\omega_t)$ 和 $c_f(\omega_t)$ 分别为天气 $\omega_t$ 下水、食物的基础消耗，$V_m$ 为矿山节点集合。
+\hspace*{2em}其中，$c_w(\omega_t)$ 和 $c_f(\omega_t)$ 分别为天气 $\omega_t$ 下水、食物的基础消耗，$V_m$ 为矿山节点集合。式\eqref{eq:q1_move} 说明行走需满足两点：所走边 $(i,j)$ 存在于地图 $E$ 中，且当日天气不为沙暴；式\eqref{eq:q1_mine} 说明挖矿仅能在矿山节点 $V_m$ 上进行。
 
             \item\textbf{资源与现金递推} 
             
