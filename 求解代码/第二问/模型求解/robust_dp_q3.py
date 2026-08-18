@@ -315,3 +315,36 @@ def solve_initial_purchase(
         runtime_seconds=perf_counter() - started,
         candidates_checked=checked,
     )
+
+
+def verify_with_dp(
+    milp_robust_value: float,
+    level: LevelConfig,
+    game: GameConfig,
+    weather_states: tuple[str, ...] = ("晴朗", "高温"),
+    initial_state: State | None = None,
+    tolerance: float = 1e-6,
+) -> tuple[bool, float, float]:
+    """用自适应鲁棒 DP 独立校验 MILP 鲁棒值（沿用第一问 [solver.verify_with_dp](求解代码/第一问/模型求解/solver.py#L100-L131) 模式）。
+
+    返回 (consistent, |dp - milp|, dp_value)：
+    - consistent: 二者误差 < tolerance
+    - 误差值
+    - DP 独立计算得到的鲁棒值
+    """
+    solver = AdaptiveRobustSolver(level, game, weather_states)
+    if initial_state is None:
+        solution = solve_initial_purchase(level, game, weather_states)
+        init = solution.initial_state
+    else:
+        init = initial_state
+    # 对每个初始天气分支评估鲁棒值，取 min
+    branches = [
+        solver.decide(1, init, weather, storm_budget=0)
+        for weather in weather_states
+    ]
+    if any(b.robust_value == NEG_INF for b in branches):
+        return False, float("inf"), float("-inf")
+    dp_robust = min(b.robust_value for b in branches)
+    diff = abs(dp_robust - milp_robust_value)
+    return diff < tolerance, diff, dp_robust

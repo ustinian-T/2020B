@@ -11,6 +11,7 @@ from .export import write_csv, write_json
 from .game_rolling import RollingConfig, RollingSimulation, rolling_simulation
 from .validation_experiments import (
     run_ablation,
+    run_empirical_resample,
     run_exact_small_game,
     run_gamma_scan,
     run_initial_purchase_neighborhood,
@@ -88,15 +89,30 @@ def _baseline_rows(weather, gamma, config):
     return tuple(rows)
 
 
-def _information_leakage_test(weather, gamma, config) -> bool:
+def _information_leakage_test(weather, gamma, config) -> tuple[bool, int, int]:
+    """对每个 t=1…len(weather) 做同前缀反事实检验。
+
+    返回 (全部通过, 通过日数, 总检查日数)。仅在前 t 天完全一致、
+    第 t+1 天起不同的情况下比较第 t 天策略，要求动作与阶段 payoff 表
+    完全相同，以证明策略函数未越界读取未来天气。
+    """
     if not weather:
-        return True
+        return True, 0, 0
     alternatives = {"晴朗": "高温", "高温": "晴朗", "沙暴": "晴朗"}
-    counterfactual = tuple(
-        value if index == 0 else alternatives[value]
-        for index, value in enumerate(weather)
-    )
-    return counterfactual_prefix_test(weather, counterfactual, 1, gamma, config)
+    total = 0
+    passed = 0
+    for t in range(1, len(weather) + 1):
+        cf = tuple(
+            weather[i] if i < t else alternatives[weather[i]]
+            for i in range(len(weather))
+        )
+        if weather[: t - 1] != cf[: t - 1]:
+            # 防御性检查：反事实前 t-1 天必须与原序列一致
+            continue
+        total += 1
+        if counterfactual_prefix_test(weather, cf, t, gamma, config):
+            passed += 1
+    return passed == total, passed, total
 
 
 def run_experiment(
@@ -111,11 +127,15 @@ def run_experiment(
     audit = audit_simulation(simulation, config)
     loss = conflict_loss(simulation, config.game)
     regret = ex_post_regret_upper_bound(simulation, config.game)
-    leakage_ok = _information_leakage_test(weather, gamma, config)
+    leakage_ok, leakage_passed, leakage_total = _information_leakage_test(
+        weather, gamma, config
+    )
     epsilon_max = max(
         (day.equilibrium.epsilon for day in simulation.days), default=0.0
     )
     wealths = [value for value in simulation.terminal_wealths if value is not None]
+    resample_rows = run_empirical_resample(weather, gamma, config)
+    resample = resample_rows[0]
     summary = {
         "experiment_type": "empirical_pressure_test",
         "future_weather_used_by_policy": False,
@@ -129,11 +149,16 @@ def run_experiment(
         "epsilon_max": epsilon_max,
         "conflict_loss": asdict(loss),
         "information_leakage_ok": leakage_ok,
+        "information_leakage_passed": leakage_passed,
+        "information_leakage_total": leakage_total,
         "audit_check_count": audit.check_count,
         "audit_violation_count": audit.violation_count,
         "audit_max_abs_residual": audit.max_abs_residual,
         "audit_messages": list(audit.messages),
         "failure_reason": simulation.failure_reason,
+        "resample_n_samples": resample["样本数"],
+        "resample_success_rate": resample["成功率"],
+        "resample_mean_wealth": resample["平均终端财富"],
     }
     if audit.violation_count or audit.max_abs_residual != 0 or not leakage_ok:
         raise RuntimeError("模型检验未通过，拒绝导出未经验证的第六关结果")
@@ -150,6 +175,10 @@ def run_experiment(
     )
 
     if include_extended:
+        write_csv(
+            output_root / "结果验证" / "第六关经验重采样.csv",
+            resample_rows,
+        )
         write_csv(
             output_root / "结果验证" / "第六关基准对比.csv",
             _baseline_rows(weather, gamma, config),

@@ -1,10 +1,22 @@
 \documentclass{cumcmthesis}
 
-
-
 \usepackage[framemethod=TikZ]{mdframed}
 \usepackage{url}   % 网页链接
 \usepackage{subcaption} % 子标题
+\usepackage{caption}  % 自定义标题格式（用于附录表标题左对齐）
+\usepackage{cite}  % 文献引用编号压缩排序
+
+% 公式编号按节自动编号：(5.1)(5.2)……；图表编号同样跟随节（图5.1、表5.1）
+\numberwithin{equation}{section}
+\numberwithin{figure}{section}
+\numberwithin{table}{section}
+% cls 中 \thesection 为中文（五、），此处强制公式/图表前缀使用阿拉伯数字
+\renewcommand{\theequation}{\arabic{section}.\arabic{equation}}
+\renewcommand{\thefigure}{\arabic{section}.\arabic{figure}}
+\renewcommand{\thetable}{\arabic{section}.\arabic{table}}
+
+% 第一问、第二问增强图表所在目录
+\graphicspath{{../求解代码/第一问/figures_enhanced/}{../求解代码/第二问/figures_enhanced/}{../求解代码/第三问（1）/03图片输出/}{../求解代码/第三问（2）/03图片输出/}}
 \title{基于模型的问题研究}
 \tihao{A}
 \baominghao{xxxx}
@@ -26,426 +38,1207 @@
 \end{center}
 
  \begin{abstract}
-当今世界，智能装备的发展日新月异。在智能装备的导航与定位任务中，仅依靠单一传感器已经难以满足复杂场景的需要。因此，多源异构传感器组合定位方案成为研究热点。本文针对题目所给出的两类核心定位数据，系统研究了多源异构定位数据的融合方法以及在此基础上的任务规划问题，递进式地解决了从理想无噪声场景到实际含噪声场景下的时间对齐、系统偏差校正与高精度轨迹重建难题。
-
-针对问题一，本文建立了基于机器人SLAM领域的连续时间因子图的全局优化模型，创新性地引入连续时间线性插值观测因子，避免了传统离散时间方法中的“伪收敛”问题，并通过多相插值滤波技术解决10Hz无失真升频问题，结合运动平滑残差构建最大后验估计目标函数。通过交替优化策略与稀疏线性子求解问题，
-实现了时间偏差与10Hz轨迹的端到端全局最优估计，彻底消除了分步法的累计误差，验证结果显示重投影精度达机器零量级。
-
-针对问题二，本文在问题一的基础上构建了扩展因子图全局联合优化模型，将固定SE(2)系统偏差（旋转角与二维平移量）增广为待估计变量，引入基于噪声协方差的高斯加权观测模型与Huber鲁棒核函数，以抑制异常观测干扰。同时，增设跨传感器速度/加速度一致性约束和轨迹自身运动学正则项，保证了融合轨迹的动力学合理性。采用“速度相关网格搜索 + Trimmed ICP”策略为时间偏差和系统偏差提供高精度初值，随后进行多轮交替优化求解。求解得两种定位方式间的固定时间偏差为 5.3525秒，系统偏差参数为：旋转角 0.5402弧度、X方向平移 -2.3543米、Y方向平移 -4.8467米，并据此生成了高精度的10Hz融合轨迹。模型验证表明，融合轨迹的运动学特性曲线平滑连续，残差分布近似正态且无系统性偏差。
-% \begin{mdframed} [%
-% 	roundcorner=5pt,
-% 	linecolor=gray!50,
-% 	outerlinewidth=0.5pt,
-% 	middlelinewidth=0.3pt, backgroundcolor=gray!2,
-% innertopmargin=\topskip, frametitle={建模比赛格式变化说明},
-% frametitlefont= \bfseries,frametitlerule=true,frametitlealignment =\raggedright\noindent,
-% frametitlerulewidth=.5pt, frametitlebackgroundcolor=gray!2,]
-% 今年的格式变化主要就是三个地方，如下：
-% \begin{enumerate}
-% \item 论文第一页为承诺书，\textbf{\color{red}内容进行了调整}。
-
-% \item 编号页格式进行了格式调整。
-
-% \item 这是19年调整了，这里延续说明下。论文正文（\textbf{\color{red}不要目录}，尽量控制在20页以内）；正文之后是论文附录（页数不限）。
-
-% \end{enumerate}
-
-% \end{mdframed}
-
-% \uwave{关注我们的微信公众号}：
-
-% \centerline{\includegraphics[width=6cm]{gongzhonghao2}}
+    本文针对穿越沙漠的小游戏进行研究。
 
 \keywords{\TeX{}\quad  图片\quad   表格\quad  公式}
 \end{abstract}
 
-%目录  2019 明确不要目录，我觉得这个规定太好了
-%\tableofcontents
-
-%\newpage
-
 \section{问题重述}
 
-在自主移动机器人、无人车等智能装备的导航与定位任务中，单一传感器定位方式易受环境干扰与自身硬件限制，通常采用多源异构传感器组合定位方案以满足实际场景需要。
-本题给出机器人实际定位场景中相关定位数据：定位方式1（输出频率4Hz，采样周期0.25s）与定位方式2（输出频率5Hz，采样周期0.2s）。两类数据由不同采集设备获取，存在起始时间不同步、采样频率不同、数据含随机噪声等问题。直接融合将导致位置信息错位、轨迹失真，无法输出高频率、高精度的连续定位结果。
-此外，机器人需沿轨迹运动并对沿途目标点执行“模拟射击”或“拍照扫描”任务，任务执行受距离、速度、加速度等多种运动学约束限制。
+玩家从起点出发穿越沙漠，在有限时间内到达终点，目标为剩余资金最大化。游戏过程中，玩家在天气、负重、水和食物等因素约束下逐日选择停留、移动、挖矿或补给等行为，规则如下：
 
-针对问题一，依据附件所给定数据，
-\begin{itemize}
-    \item Mac 下可以使用 Mac\TeX{}
-    \item Linux 下可以使用 \TeX{}Live ；
-    \item windows 下可以使用 \TeX{}Live 或者 Mik\TeX{} ;
-\end{itemize}
-
-具体安装可以参考 \href{https://github.com/OsbertWang/install-latex-guide-zh-cn/releases/}{Install-LaTeX-Guide-zh-cn} 或者其它靠谱的文章。另外可以安装一个易用的编辑器，例如 \href{https://mirrors.tuna.tsinghua.edu.cn/github-release/texstudio-org/texstudio/LatestRelease/}{\TeX{}studio} 。
-
-使用该模板前，请阅读模板的使用说明文档。下面给出模板使用的大概样式。
-
-\begin{tcode}
-    \documentclass{cumcmthesis}
-    %\documentclass[withoutpreface,bwprint]{cumcmthesis} %去掉封面与编号页
-
-    \title{论文题目}
-    \tihao{A}            % 题号
-    \baominghao{4321}    % 报名号
-    \schoolname{你的大学}
-    \membera{成员A}
-    \memberb{成员B}
-    \memberc{成员C}
-    \supervisor{指导老师}
-    \yearinput{2017}     % 年
-    \monthinput{08}      % 月
-    \dayinput{22}        % 日
-
-    \begin{document}
-        \maketitle
-        \begin{abstract}
-            摘要的具体内容。
-            \keywords{关键词1\quad  关键词2\quad   关键词3}
-        \end{abstract}
-        \tableofcontents
-        \section{问题重述}
-        \subsection{问题的提出}
-        \section{模型的假设}
-        \section{符号说明}
-        \begin{center}
-            \begin{tabular}{cc}
-                \hline
-                \makebox[0.3\textwidth][c]{符号}	&  \makebox[0.4\textwidth][c]{意义} \\ \hline
-                D	    & 木条宽度（cm） \\ \hline
-            \end{tabular}
-        \end{center}
-        \section{问题分析}
-        \section{总结}
-        \begin{thebibliography}{9}%宽度9
-            \bibitem{bib:one} ....
-        \end{thebibliography}
-        \begin{appendices}
-            附录的内容。
-        \end{appendices}
-    \end{document}
-\end{tcode}
-\section{问题重述}
-        \subsection{问题的提出}
-\section{模型的假设}
-\section{符号说明}
-根据要求，电子版论文提交时需去掉封面和编号页。可以加上 \verb|withoutpreface|  选项来实现，即：
-\begin{tcode}
-    \documentclass[withoutpreface]{cumcmthesis}
-\end{tcode}
-这样就能实现了。打印的时候有超链接的地方不需要彩色，可以加上 \verb|bwprint| 选项。
-
-另外目录也是不需要的，将 \verb|\tableofcontents| 注释或删除，目录就不会出现了。
-
-团队的信息填入指定的位置，并且确保信息的正确性，以免因此白忙一场。
-
-编译记得使用 \verb|xelatex|，而不是用 \verb|pdflatex|。在命令行编译的可以按如下方式编译：
-\begin{tcode}
-	xelatex example
-\end{tcode}
-或者使用 \verb|latexmk| 来编译，更推荐这种方式。
-\begin{tcode}
-	latexmk -xelatex example
-\end{tcode}
-
-下面给出写作与排版上的一些建议。
-
-\section{绘制普通三线表格}
-表格应具有三线表格式，因此常用 booktabs宏包，其标准格式如\cref{tab:001}~所示。
-\begin{table}[!htbp]
-    \caption{标准三线表格}\label{tab:001} \centering
-    \begin{tabular}{ccccc}
-        \toprule[1.5pt]
-        $D$(in) & $P_u$(lbs) & $u_u$(in) & $\beta$ & $G_f$(psi.in)\\
-        \midrule[1pt]
-        5 & 269.8 & 0.000674 & 1.79 & 0.04089\\
-        10 & 421.0 & 0.001035 & 3.59 & 0.04089\\
-        20 & 640.2 & 0.001565 & 7.18 & 0.04089\\
-        \bottomrule[1.5pt]
-    \end{tabular}
-\end{table}
-
-其绘制表格的代码及其说明如下。
-\begin{tcode}
-    \begin{table}[!htbp]
-        \caption[标签名]{中文标题}
-        \begin{tabular}{cc...c}
-            \toprule[1.5pt]
-            表头第1个格   & 表头第2个格   & ... & 表头第n个格  \\
-            \midrule[1pt]
-            表中数据(1,1) & 表中数据(1,2) & ... & 表中数据(1,n)\\
-            表中数据(2,1) & 表中数据(2,2) & ... & 表中数据(2,n)\\
-            ...................................................\\
-            表中数据(m,1) & 表中数据(m,2) & ... & 表中数据(m,n)\\
-            \bottomrule[1.5pt]
-        \end{tabular}
-    \end{table}
-\end{tcode}
-
-\bigskip
-
-table环境是一个将表格嵌入文本的浮动环境。tabular环境的必选参数由每列对应一个格式字符所组成：c表示居中，l表示左对齐，r表示右对齐，其总个数应与表的列数相同。此外，\verb|@{文本}|可以出现在任意两个上述的列格式之间，其中的文本将被插入每一行的同一位置。表格的各行以\verb|\\|分隔，同一行的各列则以\&分隔。 \verb|\toprule| 、\verb|\midrule| 和 \verb|\bottomrule| 三个命令是由booktabs宏包提供的，其中 \verb|\toprule| 和 \verb|\bottomrule| 分别用来绘制表格的第一条（表格最顶部）和第三条（表格最底部）水平线， \verb|\midrule| 用来绘制第二条（表头之下）水平线，且第一条和第三条水平线的线宽为 1.5pt ，第二条水平线的线宽为 1pt 。引用方法与图片的相同。
-
-\section{公式}
-
-数学建模必然涉及不少数学公式的使用。下面简单介绍一个可能用得上的数学环境。
-
-首先是行内公式，例如 $ \theta $ 是角度。行内公式使用 \verb|$  $| 包裹。
-
-行间公式不需要编号的可以使用 \verb|\[  \]| 包裹，例如
-\[
-E_1=mc^2
-\]
-其中 $ E $ 是能量，$ m $ 是质量，$ c $ 是光速。
-
-如果希望某个公式带编号，并且在后文中引用可以参考下面的写法：
-\begin{equation}
-E=mc^2
-\label{eq:energy}
-\end{equation}
-式\cref{eq:energy}是质能方程。
-
-多行公式有时候希望能够在特定的位置对齐，以下是其中一种处理方法。
-\begin{align}
-P & = UI \\
-& = I^2R
-\end{align}
-\verb|&| 是对齐的位置， \verb|&| 可以有多个，但是每行的个数要相同。
-
-矩阵的输入也不难。
-\[
-\mathbf{X} = \left(
-    \begin{array}{cccc}
-    x_{11} & x_{12} & \ldots & x_{1n}\\
-    x_{21} & x_{22} & \ldots & x_{2n}\\
-    \vdots & \vdots & \ddots & \vdots\\
-    x_{n1} & x_{n2} & \ldots & x_{nn}\\
-    \end{array} \right)
-\]
-
-分段函数这些可以用 \verb|case| 环境，但是它要放在数学环境里面。
-\[
-f(x) =
-    \begin{cases}
-        0 &  x \text{为无理数} ,\\
-        1 &  x \text{为有理数} .
-    \end{cases}
-\]
-在数学环境里面，字体用的是数学字体，一般与正文字体不同。假如要公式里面有个别文字，则需要把这部分放在 \verb|text| 环境里面，即 \verb|\text{文本环境}| 。
-
-公式中个别需要加粗的字母可以用 \verb|$\bm{math symbol}$| 。如 $ \alpha a\bm{\alpha a} $ 。
-
-以上仅简单介绍了基础的使用，对于更复杂的需求，可以阅读相关的宏包手册，如 \href{http://texdoc.net/texmf-dist/doc/latex/amsmath/amsldoc.pdf}{amsmath}。
-
-希腊字母这些如果不熟悉，可以去查找符号文件 \href{http://mirrors.ctan.org/info/symbols/comprehensive/symbols-a4.pdf}{symbols-a4.pdf} ，也可以去 \href{http://detexify.kirelabs.org/classify.html}{detexify} 网站手写识别。另外还有数学公式识别软件 \href{https://mathpix.com/}{mathpix} 。
-
-下面简单介绍一下定理、证明等环境的使用。
-\begin{definition}
-    定义环境
-    \label{def:nosense}
-\end{definition}
-\cref{def:nosense}除了告诉你怎么使用这个环境以外，没有什么其它的意义。
-
-除了 definition 环境，还可以使用 theorem 、lemma、corollary、assumption、conjecture、axiom、principle、problem、example、proof、solution 这些环境，根据论文的实际需求合理使用。
-
-\begin{theorem}
-    这是一个定理。
-    \label{thm:example}
-\end{theorem}
-由\cref{thm:example}我们知道了定理环境的使用。
-
-\begin{lemma}
-    这是一个引理。
-    \label{lem:example}
-\end{lemma}
-由\cref{lem:example}我们知道了引理环境的使用。
-
-\begin{corollary}
-    这是一个推论。
-    \label{cor:example}
-\end{corollary}
-由\cref{cor:example}我们知道了推论环境的使用。
-
-\begin{assumption}
-    这是一个假设。
-    \label{asu:example}
-\end{assumption}
-由\cref{asu:example}我们知道了假设环境的使用。
-
-\begin{conjecture}
-    这是一个猜想。
-    \label{con:example}
-\end{conjecture}
-由\cref{con:example}我们知道了猜想环境的使用。
-
-\begin{axiom}
-    这是一个公理。
-    \label{axi:example}
-\end{axiom}
-由\cref{axi:example}我们知道了公理环境的使用。
-
-\begin{principle}
-    这是一个定律。
-    \label{pri:example}
-\end{principle}
-由\cref{pri:example}我们知道了定律环境的使用。
-
-\begin{problem}
-    这是一个问题。
-    \label{pro:example}
-\end{problem}
-由\cref{pro:example}我们知道了问题环境的使用。
-
-\begin{example}
-    这是一个例子。
-    \label{exa:example}
-\end{example}
-由\cref{exa:example}我们知道了例子环境的使用。
-
-\begin{proof}
-    这是一个证明。
-    \label{prf:example}
-\end{proof}
-由\cref{prf:example}我们知道了证明环境的使用。
-
-\begin{solution}
-    这是一个解。
-    \label{sol:example}
-\end{solution}
-由\cref{sol:example}我们知道了解环境的使用。
-
-
-
-\section{其它小功能}
-\subsection{脚注}
-
-利用 \verb|\footnote{具体内容}| 可以生成脚注\footnote{脚注可以补充说明一些东西}。
-
-\subsection{无序列表与有序列表}
-
-无序列表是这样的：
-\begin{itemize}
-    \item one
-    \item two
-    \item ...
-\end{itemize}
-
-有序列表是这样子的：
-\begin{enumerate}
-    \item one
-    \item two
-    \item ...
+\begin{enumerate}[leftmargin=2em,itemsep=2pt]
+    \item 时间以天为单位，第0 天玩家位于起点，须在截止日期前到达终点。
+    \item 资源为水与食物，最小单位均为箱，总质量不超负重上限；到达前耗尽则失败。
+    \item 每日天气为晴朗、高温、沙暴之一，全区域一致；沙暴日必须停留。
+    \item 停留、行走、挖矿的资源消耗为基础消耗量的 1、2、3 倍。
+    \item 第 0 天可在起点按基准价一次性采购水与食物；到达终点后剩余资源按基准价一半退回。
+    \item 矿山可挖矿获得基础收益，到达矿山当日不能挖矿，沙暴日可挖矿；村庄可按基准价 2 倍随时购买。
+    \item 地图中仅有公共顶点而无公共边界的两区域不相邻。
 \end{enumerate}
 
-\subsection{字体加粗与斜体}
+需解决以下三类问题：
 
-如果想强调部分内容，可以使用加粗的手段来实现。加粗字体可以用 \verb|\textbf{加粗}| 来实现。例如： \textbf{这是加粗的字体。 This is bold fonts} 。
+\textbf{问题一}：天气事先全部已知，求解第一关与第二关单人最优策略。
 
-中文字体没有斜体设计，但是英文字体有。\textit{斜体 Italics}。
+\textbf{问题二}：玩家仅在每天行动时获知当天天气，求解第三关与第四关单人最佳策略。
 
-\section{参考文献与引用}
+\textbf{问题三}：现有 $n$ 名玩家同时出发、初始资金相同。若某天任意 $k\,(2\le k\le n)$ 名玩家同行至相邻区域，任一人当日消耗为基础消耗量的 3 倍；若若干玩家同矿挖矿，任一人消耗为基础消耗量的 $2k$ 倍、每人收益为基础收益的 $1/k$；若任意 $k$ 名玩家同村购买，则每箱价格为基准价的 4 倍；其他情况规则同单人。需分两小问求解：
 
-参考文献对于一篇正式的论文来说是必不可少的，在建模中重要的参考文献当然应该列出。\LaTeX{}在这方面的功能也是十分强大的，下面进介绍一个比较简单的参考文献制作方法。有兴趣的可以学习 \verb|bibtex| 或 \verb|biblatex| 的使用。
+（1）天气已知且方案第 0 天锁定后不可更改，求玩家策略。
 
-\LaTeX{}的入门书籍可以看《\LaTeX{}入门》\cite{liuhaiyang2013latex}。这是一个简单的引用，用 \verb|\cite{bibkey}| 来完成。要引用成功，当然要维护好 bibitem 了。下面是个简单的例子。
+（2）所有玩家仅知当天天气且每日日末可观测其余玩家行动与资源，求玩家策略。
+
+\section{问题分析}
+
+        
+        \subsection{问题一的分析}
+        问题一需要求解在天气已知、时间有限、位置离散、资源受限且途中可进行补给与矿山产生收益的情况下进行决策。
+        因此，不能简单追求最短路径或最高收益，必须进行联合优化。首先将最短路径设置为下界，由于同一时间、同一位置可以由不同历史路径到达，而后续最优决策仅取决于当前所剩资源与现金，满足Bellman最优子结构。
+        据此以天为阶段，以位置、水量、食物量为状态，以现金为价值函数，逐日枚举停留、行走与挖矿的情况：若当天在村庄结束则补充购买，若达到终点则将剩余资源折合成现金。同时为控制计算量，通过Pareto支配、最早到达日与乐观收益作为上界剔除不可能最优状态。
+        最终得到逐日最优策略。
+        \subsection{问题二的分析}
+        问题二在问题一的基础上改变天气条件，将天气状况改为未知后进行决策。本文通过构造满足“仅知当天”的非前视反馈策略并进行反馈优化完成求解。
+        首先，第三关与第四关给出了对应的不确定性结构：第三关明确10日内无沙暴且未来仅有晴朗与高温两种天气，可穷举构造1024种情景；第四关仅知“30日内沙暴较少”，故将沙暴天数作为可扫描的预算参数构造不确定集。
+        据此以天为阶段，以位置、水量、食物量、现金与天气情况为状态，以最终财富（现金与剩余资源半价回收）为价值函数，逐日枚举移动、停留、挖矿与补给动作，
+        用在未来所有天气分支中最不利分支的后续最优值形成自适应鲁棒Bellman递推，得到动态规划路线。同时借助Pareto、时间下界与资源上界剪枝剔除不可能最优状态，并以题内30日天气样本估计的经验Markov模型作名义期望并列判别，以完全信息Oracle与蒙特卡洛交叉验证策略的稳健性与近优性，最终得到最优策略。
+        \subsection{问题三的分析}
+        问题三在问题一、问题二的基础上引入多人参与，将单人决策转化为多人非合作博弈。每名玩家的最优行动与他人当日决策直接相关。
+
+        第一小问中，整个游戏天气已知且方案在第0天后不可修改，每名玩家都希望最大化自身利益，但同向移动、同时挖矿会导致个体收益受到影响。因此应当将每个完整行动序列视为纯策略，构造完全信息开环动态博弈。在求解时，采用固定对方方案后用资源约束DP求解全局最优响应，再通过迭代或扩展策略寻找Nash均衡，并以单边偏离检验证明均衡稳定性。最终完成求解。
+
+        第二小问中，天气与未来竞争位置不定。考虑到完整三人Markov博弈，但不确定因素过多导致其笛卡尔积过大，因此转换方法选用局部耦合价值求解。将当天的同行、同矿、同村计算出来，并经单人鲁棒DP给出停留、挖矿、移动动作的未来价值。
+        根据这些值生成当日的小型阶段博弈求Nash均衡，只执行当天动作，次日重新求解。最后得到结果。
+\section{模型假设}
+
+\begin{enumerate}
+    \item 
+    假设水和食物采购与消耗量均为整数，不考虑连续数量下的部分消耗。
+
+    \item 
+    假设所有玩家均以最终可变现财富（到达时的现金加剩余资源半价回收）最大化为唯一目标，在决策中不包含风险偏好、合作倾向或利他行为等其他因素。
+
+    \item 
+    假设玩家决策仅依赖当天已公开的天气与状态信息，不使用任何尚未发生的未来天气数据或未经观察的其他玩家状态。
+
+\end{enumerate}
+\section{符号说明}
+
+\begin{longtable}{p{2.5em}>{\centering\arraybackslash}p{\dimexpr\textwidth-5em\relax}p{2em}}
+
+\toprule[1.5pt]
+符号 & 含义 & 单位 \\
+\midrule[1pt]
+\endfirsthead
+\multicolumn{3}{c}{\tablename~\thetable{}（续表）} \\
+\midrule[1pt]
+符号 & 含义 & 单位 \\
+\midrule[1pt]
+\endhead
+\bottomrule[1.5pt]
+\endfoot
+\bottomrule[1.5pt]
+\endlastfoot
+$G$ & 沙漠地图无向图 & --- \\
+$V_m$ & 矿山节点集合 & --- \\
+$g$ & 终点节点 & --- \\
+$t$ & 日期序号（以第 0 天为起点） & 天 \\
+$T$ & 游戏截止日期 & 天 \\
+$\omega_t$ & 第 $t$ 天天气（$S$ 晴朗、$H$ 高温、$X$ 沙暴） & --- \\
+$S_t$ & 问题一单人状态 & --- \\
+$s_t$ & 问题二单人状态  & --- \\
+$i_t$ & 第 $t$ 天日末所在区域 & --- \\
+$W_t$ & 第 $t$ 天日末剩余水量 & 箱 \\
+$F_t$ & 第 $t$ 天日末剩余食物量 & 箱 \\
+$C_t$ & 第 $t$ 天日末现金 & 元 \\
+$Z$ & 终端总财富 & 元 \\
+$C_0$ & 玩家初始资金 & 元 \\
+$\kappa(a_t)$ & 动作消耗倍率 & --- \\
+$a_t$ & 第 $t$ 天的动作 & --- \\
+$\pi_i$ & 玩家 $i$ 第 0 天锁定的完整方案） & --- \\
+$H_t$ & 第六关第 $t$ 天的公共状态 & --- \\
+\end{longtable}
+
+\section{模型建立与求解}
+\subsection{问题一的模型建立与求解}
+    \subsubsection{动态规划模型}
+
+    对于问题一，最短路径只能描述简单的空间距离，无法考虑天气、资源、现金收益的影响。但动态规划具备最优子结构：即只需保存每个状态下的最大现金而无需记录完整路径历史便可以进行精确求解。
+    动态规划通过将问题划分为若干阶段，并以系统状态描述阶段间的信息传递，从而利用递推关系求解有限期最优决策问题\textsuperscript{\cite{bertsekas2017dynamic}}.
+    
+    \begin{enumerate}
+        \item\textbf{图模型}
+        
+        
+        \hspace*{2em}首先将沙漠地图表示为无向图 $G=(V,E)$。若区域 $i$ 与 $j$ 存在公共边界，则 $(i,j)\in E$；仅有公共顶点不连边。每次移动恰好占用一个可移动日，因此边权统一为 1。定义邻接集合 $N(i)=\{j\mid (i,j)\in E\}$。BFS 仅用于计算各节点到终点的最少移动步数 $d(i,g)$，作为可达性下界；具体哪天移动、是否停留或挖矿，由动态规划决定。第一关共 27 个节点、53 条无向边；第二关共 64 个节点、161 条无向边。
+
+        \item\textbf{状态变量与价值函数}
+        
+        \hspace*{2em}以天为阶段，将玩家处境抽象为“日期---位置---水量---食物量”四元状态，现金不作为状态维度，而由价值函数保存：
+
+\begin{equation}
+S_t = (t,\ i_t,\ W_t,\ F_t)
+\label{eq:q1_state}
+\end{equation}
+
+\hspace*{2em}其中，$t$ 为当前日序号，$i_t$ 为日末所在区域，$W_t$ 和 $F_t$ 分别为日末剩余水和食物的箱数。
+
+
+\hspace*{2em}$V_t(i,\ w,\ f) $表示第 $t$日日末处于节点$i$余水$w$、余食$f$时可达到的最大现金。
+$V_t$ 即该状态的价值函数。
+
+        \item\textbf{目标函数}
+        
+        \hspace*{2em}
+        题目允许到达终点后按基准价的一半退回剩余水和食物，因此不能预先假设终点库存为零。对任意不晚于截止日期 $T$ 的终点状态，终端总财富为到达时的现金加上剩余资源的半价回收价值：
+
+\begin{equation}
+\max Z = C_\tau + 0.5\,p_w\,W_\tau + 0.5\,p_f\,F_\tau
+\label{eq:q1_obj}
+\end{equation}
+\begin{equation}
+\text{s.t.}\quad 0 \leq \tau \leq T,\quad i_\tau = g
+\label{eq:q1_objcon}
+\end{equation}
+
+\hspace*{2em}
+其中，$Z$ 为终端总财富；$C_\tau$ 为到达终点当天的现金；$W_\tau$ 和 $F_\tau$ 为终点库存；$p_w$ 和 $p_f$ 分别为水和食物的基准价格。采用价值函数后，最终目标写为：
+
+\begin{equation}
+Z^* = \max_{0 \leq t \leq T,\ w,\ f} \Bigl\{ V_t(g,\ w,\ f) + 0.5\,p_w\,w + 0.5\,p_f\,f \Bigr\}
+\end{equation}
+
+        \item\textbf{约束条件} 
+        
+
+        \begin{enumerate}
+            \item\textbf{ 初始采购}
+            
+             \hspace*{2em}第 0 天仅在起点按基准价采购一次：
+
+\begin{equation}
+V_0(s,\ w,\ f) = C_0 - p_w\,w - p_f\,f
+\label{eq:q1_init}
+\end{equation}
+\begin{equation}
+p_w\,w + p_f\,f \leq C_0,\quad m_w\,w + m_f\,f \leq M,\quad w,\ f \in \mathbb{Z}_+
+\label{eq:q1_initcon}
+\end{equation}
+
+其中，$C_0$ 为初始资金，$m_w$ 和 $m_f$ 分别为每箱水和食物的质量，$M$ 为负重上限。玩家后续即使返回起点，也不再生成起点购买转移。
+
+            \item \textbf{行动与消耗} 
+            
+            \hspace*{2em}停留、行走、挖矿的消耗倍率分别为 1、2、3。沙暴日禁止移动，但停留和矿山挖矿仍允许；到达矿山当天不能挖矿——由于动态规划从"前一日结束状态"向下一日扩展，挖矿动作只从"前一天已在矿山"的状态生成，因此该规则满足：
+
+\begin{equation}
+\kappa(a_t) = \begin{cases}
+1, & a_t = \text{停留} \\
+2, & a_t = \text{行走} \\
+3, & a_t = \text{挖矿}
+\end{cases}
+\label{eq:q1_kappa}
+\end{equation}
+\begin{equation}
+\Delta W_t = \kappa(a_t)\,c_w(\omega_t),\quad \Delta F_t = \kappa(a_t)\,c_f(\omega_t)
+\label{eq:q1_consume}
+\end{equation}
+\begin{equation}
+\text{行走可行} \Leftrightarrow (i,j)\in E\text{ 且 }\omega_t \neq \text{沙暴}
+\label{eq:q1_move}
+\end{equation}
+\begin{equation}
+\text{挖矿可行} \Leftrightarrow i \in V_m
+\label{eq:q1_mine}
+\end{equation}
+
+\hspace*{2em}其中，$c_w(\omega_t)$ 和 $c_f(\omega_t)$ 分别为天气 $\omega_t$ 下水、食物的基础消耗，$V_m$ 为矿山节点集合。
+
+            \item\textbf{资源与现金递推} 
+            
+            \hspace*{2em}扣除当日消耗后，若挖矿则增加基础收益 $R$，否则现金不变；若在村庄则执行补给：
+
+\begin{equation}
+W_t = W_{t-1} - \Delta W_t + b^w_t,\quad F_t = F_{t-1} - \Delta F_t + b^f_t
+\label{eq:q1_res}
+\end{equation}
+\begin{equation}
+C_t = C_{t-1} + R\cdot{I}(a_t = \text{挖矿}) - 2\,p_w\,b^w_t - 2\,p_f\,b^f_t
+\label{eq:q1_cash}
+\end{equation}
+\begin{equation}
+W_t \geq 0,\quad F_t \geq 0,\quad C_t \geq 0
+\label{eq:q1_rescon}
+\end{equation}
+\begin{equation}
+m_w\,W_t + m_f\,F_t \leq M
+\label{eq:q1_load}
+\end{equation}
+
+其中，$b^w_t$ 和 $b^f_t$ 为日末村庄购买量，非村庄节点处为零；${I}(\cdot)$ 为指示函数。
+
+        \end{enumerate}
+
+        \item\textbf{Bellman 状态转移}
+        
+        \hspace*{2em}设从状态 $s=(t-1,i,w,f)$ 经动作 $a$ 和购买 $b$ 到达 $s'=(t,j,w',f')$，现金增量为 $r_t(s,a,b)$，则：
+
+\begin{equation}
+V_t(j,\ w',\ f') = \max\Bigl\{ V_t(j,\ w',\ f'),\ V_{t-1}(i,\ w,\ f) + r_t(s,\ a,\ b) \Bigr\}
+\label{eq:q1_bellman}
+\end{equation}
+
+若目标节点为终点，则在更新 $V_t$ 后立即计算终端财富，不再将状态扩展到下一天。
+    \end{enumerate}
+\subsubsection{压缩状态空间支配剪枝}
+
+完整动态规划在理论上需要枚举约 $T \times |V| \times W_{\max} \times F_{\max}$ 个状态，远超实际可达范围。为此采用三种剪枝策略，不改变全局最优解。
+
+\textbf{（1）Pareto 状态支配剪枝}
+
+采用Pareto支配原则对状态标签进行剪枝，以减少状态空间规模\textsuperscript{\cite{irnich2005shortest}}。
+
+在同一日 $t$、同一节点 $i$，若存在两个玩家 $A=(w_A,f_A,C_A)$ 和 $B=(w_B,f_B,C_B)$，且 $A$ 的水、食物和现金均不低于 $B$，则称 $A$ 支配 $B$：
+
+\begin{equation}
+A \succcurlyeq B \ \Leftrightarrow\ w_A \geq w_B,\ f_A \geq f_B,\ C_A \geq C_B,\ \text{且至少一个严格大于}
+\label{eq:dominate}
+\end{equation}
+
+从 $B$ 出发的任意后续合法策略都要求消耗非负数量的水和食物并支付非负的采购费用。$A$ 拥有不少于 $B$ 的库存和现金，可以选择与 $B$ 相同的行动；若 $B$ 未来需要采购，$A$ 可购买相同或更少的数量以达到不低于 $B$ 的库存，因此不会因负重约束而变得更差。到终点后额外库存还具有非负回收价值，故 $A$ 的最终财富不低于 $B$，删除 $B$ 不会删掉最优解。
+
+
+\textbf{（2）沙暴修正的最早到达日剪枝}
+
+传统最短路下界只检查"剩余天数是否不少于最短步数"，但第一问未来沙暴日完全已知，沙暴日绝对不能移动，因此可构造更强的确定可达性下界\textsuperscript{\cite{irnich2005shortest}}。
+
+令 $d = d(i,g)$ 为当前节点到终点的最短移动步数。从第 $t$ 天结束状态出发，需要在未来找到至少 $d$ 个非沙暴日完成 $d$ 次移动。定义 $e(t,d)$ 为满足下式的最小日期 $q$：
+
+\begin{equation}
+\sum_{k=t+1}^{q} I(\omega_k \neq \text{沙暴}) \geq d
+\label{eq:sand_arrival}
+\end{equation}
+
+若直到截止日 $T$ 仍不存在这样的 $q$，则当前状态即使忽略资源限制也无法到达终点，可立即删除。该剪枝不依赖任何经验参数，完全由题目已知天气序列确定。
+
+\textbf{（3）乐观收益上界剪枝}
+
+当已经获得一个可行终点财富 $Z_{\text{best}}$ 后，对任意中间状态构造极度乐观的收益上界。假设玩家从现在起不再花钱补给、现有资源最后都能按半价回收，且剩余每一天都能获得一次基础挖矿收益 $R$：
+
+\begin{equation}
+\text{UB} = C + \frac{1}{2}\,p_w\,W + \frac{1}{2}\,p_f\,F + (T - t)\,R
+\label{eq:ub}
+\end{equation}
+
+真实策略不可能比该上界更高，因为实际还需移动消耗资源，且不可能每天都在矿山挖矿。若 $\text{UB} \leq Z_{\text{best}}$，则当前状态无法改善最优解，安全剪枝。该上界全部来自题目给定参数，无人为权重。
+
+但是，稀疏标签 DP 在完整 27/64 节点、30 天全规模实例上的标签数会迅速膨胀。关闭大批次 Pareto 调用的实测下，纯 Python 实测中第一关 10 分钟内未能完成枚举。因此，全规模生产求解采用与上述动态规划递推等价的 0-1 整数线性规划，由 HiGHS 分支定界求解器在零相对间隙设置下完成；稀疏标签 DP 则用于小规模单元测试与交叉验证，二者共享同一目标函数与约束条件。
+
+
+\subsubsection{求解结果}
+
+两关全规模实例由 HiGHS 在零相对间隙下求得，核心求解指标如表~\ref{tab:q1_core} 所示。
+
+\begin{table}[H]
+    \centering
+   \caption{第一问两关最优策略核心指标}
+      \label{tab:q1_core}
+  
+    \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}ccc}
+        \toprule
+        指标 & 第一关 & 第二关 \\
+        \midrule
+        终端财富/元 & 10470 & 12730 \\
+        到达日 & 24 & 30 \\
+        挖矿天数 & 7 & 13 \\
+        补给次数 & 2 & 3 \\
+        初始水量/箱 & 178 & 130 \\
+        初始食物/箱 & 333 & 405 \\
+        MIP间隙 & 0.0 & 0.0 \\
+        求解时间/s & 9.48 & 21.71 \\
+        \bottomrule
+    \end{tabular*}
+
+\end{table}
+由表~\ref{tab:q1_core} 可知，两关均在零 MIP 间隙下取得全局最优，第二关凭借更长的任务期和更多的挖矿日获得高出 2260 元的终端财富。
+因此得到最优策略。
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.5\textwidth]{fig_q1_route_level1.png}
+    \caption{第一关最优行进路线}
+    \label{fig:q1_route1}
+\end{figure}
+
+\textbf{第一关：}最优策略如图~\ref{fig:q1_route1}所示，详细策略如附表1，最优终端财富为 10470 元，第 24 天到达终点。第 0 天购买 178 箱水和 333 箱食物，后续分别于第 8 天和第 21 天在村庄补给。策略包含两段挖矿阶段，共挖矿 7 天，并在第 17 天沙暴日选择停留，最终水和食物均恰好耗尽。
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.5\textwidth]{fig_q1_route_level2.png}
+    \caption{第二关最优行进路线}
+    \label{fig:q1_route2}
+\end{figure}
+
+\textbf{第二关：}最优策略如图~\ref{fig:q1_route2}所示，详细策略如附表2，最优终端财富为 12730 元，第 30 天到达终点。第 0 天购买 130 箱水和 405 箱食物，途中在村庄进行 3 次补给，并分两阶段挖矿共 13 天。相比第一关，增加的挖矿收益有效覆盖了补给成本，使终端财富提高 2260 元。
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.98\textwidth]{fig_q1_strategy_storyboard.png}
+    \caption{两关逐日行动、天气与关键决策}
+    \label{fig:q1_storyboard}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.98\textwidth]{fig_q1_resource_ribbon.png}
+    \caption{库存消耗、阶段补给与负重约束}
+    \label{fig:q1_resource}
+\end{figure}
+由图~\ref{fig:q1_storyboard} 可见，两关均在天气约束下完成行走、停留和挖矿状态的逐日切换，补给节点与后续挖矿或末段行走紧密衔接。从资源约束图（图~\ref{fig:q1_resource}）看，两关第 0 天负重率均为 100\%；补给日库存出现跃升后持续消耗，终点精确归零。第一关第 8 天补水后水余量超过初始水平，说明补给量精确匹配后续挖矿与移动的消耗需求。
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.98\textwidth]{fig_q1_cashflow_waterfall.png}
+    \caption{采购支出、挖矿收入与累计财富}
+    \label{fig:q1_cashflow}
+\end{figure}
+
+从现金流图（图~\ref{fig:q1_cashflow}）看，第一关两次补给分别支出 1630 元和 680 元，共 2310 元，7 个挖矿日各带来 1000 元收益，终端现金 10470 元。
+
+两关的逐日最优决策（每日天气、行动、所在区域、补给量以及剩余资金/水量/食物量）详见附录表1与附录表2。
+
+由附录表1可见，第一关第 1--8 天沿节点序列 $\mathbf{1\to25\to24\to23\to21\to9}$ 到达村庄 \textbf{15}（第 4、7 天因沙暴停留），第 8 天一次补水 \textbf{163 箱} 后行至矿山 \textbf{12}，并于第 12--19 天连续挖矿 \textbf{7 天}（第 17 天沙暴休息），累计增收 \textbf{7000 元}；第 21 天回村补给 \textbf{36 箱水、16 箱食物}，第 \textbf{24 天}到达终点，水和食物恰好耗尽。附录表2表明第二关采用\textbf{“双阶段挖矿”}策略：第 10--11 天在村庄 \textbf{39} 共补水 \textbf{228 箱}，支撑第 13--18 天在矿山 \textbf{30} 连续挖矿 \textbf{6 天}；第 19 天再次补给 \textbf{157 箱水、86 箱食物} 后，于第 22--28 天在矿山 \textbf{55} 连续挖矿 \textbf{7 天}，两段合计挖矿 \textbf{13 天}、增收 \textbf{13000 元}，最终第 \textbf{30 天}到达终点。
+\subsubsection{最优性验证}
+
+为保障求解结果的可信度，本文采用独立于求解器的多层验证机制。首先，独立 checker 从第 0 天逐日重算，对邻接关系、天气约束、动作合法性、村庄采购、资源非负、现金非负、负重上限和终止条件等九类规则逐一审计，两关均未发现违规。其次，稀疏标签 DP 与全规模求解器在小实例上的目标值交叉验证一致；通过关闭全部剪枝重新求解并与开启剪枝的结果对照，证明三种剪枝策略均不改变全局最优解。最后，针对终点吸收规则进行回归测试：将终点状态扩展到下一天的逻辑关闭后，终端财富保持 10470 元与 12730 元不变，确认终点处理正确。
+
+\subsubsection{灵敏性分析}
+
+采用单因素离散扰动法，在状态模型与求解算法均不变的前提下，每次只改变一个参数并重新求解，而非在基准解附近做线性外推。各参数扰动下的最优财富与策略结构变化如表~\ref{tab:q1_sens} 所示，整体响应排序见图~\ref{fig:q1_sensitivity}。
+
+{
+\begin{longtable}{llcccccc}
+    \caption{第一问参数扰动下的最优财富与策略结构}
+    \label{tab:q1_sens} \\
+    \toprule
+    关卡 & 扰动参数 & 参数值 & 最优财富/元 & 到达日 & 挖矿天数 & 补给次数 & 初始水/食物(箱) \\
+    \midrule
+    \endfirsthead
+
+    \multicolumn{8}{c}{表~\ref{tab:q1_sens}（续）} \\
+    \toprule
+    关卡 & 扰动参数 & 参数值 & 最优财富/元 & 到达日 & 挖矿天数 & 补给次数 & 初始水/食物(箱) \\
+    \midrule
+    \endhead
+
+    \midrule
+    \multicolumn{8}{r}{续下页} \\
+    \endfoot
+
+    \bottomrule
+    \endlastfoot
+
+    第一关 & 基准 & 基准 & 10470 & 24 & 7 & 2 & 178/333 \\
+    第一关 & 负重上限 & 1080 & 9670 & 24 & 6 & 2 & 158/303 \\
+    第一关 & 负重上限 & 1320 & 11270 & 24 & 8 & 2 & 198/363 \\
+    第一关 & 矿山收益 & 900 & 9770 & 24 & 7 & 2 & 178/333 \\
+    第一关 & 矿山收益 & 1100 & 11180 & 28 & 8 & 3 & 162/357 \\
+    第一关 & 初始资金 & 9000 & 9470 & 24 & 7 & 2 & 178/333 \\
+    第一关 & 初始资金 & 11000 & 11470 & 24 & 7 & 2 & 178/333 \\
+    第一关 & 截止日期 & 26 & 10470 & 24 & 7 & 2 & 178/333 \\
+    第一关 & 截止日期 & 28 & 10470 & 24 & 7 & 2 & 178/333 \\
+
+    \midrule
+
+    第二关 & 基准 & 基准 & 12730 & 30 & 13 & 3 & 130/405 \\
+    第二关 & 负重上限 & 1080 & 12130 & 30 & 13 & 3 & 130/345 \\
+    第二关 & 负重上限 & 1320 & 13365 & 30 & 14 & 1 & 247/289 \\
+    第二关 & 矿山收益 & 900 & 11430 & 30 & 13 & 3 & 130/405 \\
+    第二关 & 矿山收益 & 1100 & 14030 & 30 & 13 & 3 & 130/405 \\
+    
+\end{longtable}
+}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.98\textwidth]{fig_q1_sensitivity_lollipop.png}
+    \caption{参数扰动下最优财富响应排序}
+    \label{fig:q1_sensitivity}
+\end{figure}
+
+
+结果表明：\textbf{负重上限对两关均呈显著正向影响。}第一关负重由 1200 kg 下调至 1080 kg 时，最优财富由 10470 元降至 9670 元；上调至 1320 kg 后增至 11270 元。第二关相应由 12130 元升至 13365 元。容量不仅减少补给成本，还改变可持续挖矿天数。
+
+\textbf{矿山收益的影响近似分段线性，斜率由最优挖矿天数决定。}第一关收益从 1000 元降至 900 元时，最优财富降至 9770 元；升至 1100 元时增至 11180 元。第二关分别为 11430 元和 14030 元，\textbf{变化幅度更大（正负 1300 元）}，原因是基准策略共挖矿 13 天，收益传导系数更高。
+
+\textbf{初始资金的影响线性且稳定。}第一关资金由 9000 元增至 11000 元时最优财富同步增加，说明路线和采购结构基本不变。\textbf{截止日期方面，}第一关 26 天或 28 天时最优财富不变，因基准策略第 24 天已到达；第二关第 30 天才到达，时间约束更为显著。
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.98\textwidth]{fig_q1_strategy_dashboard.png}
+    \caption{第一问两关最优策略核心结果总览}
+    \label{fig:q1_dashboard}
+\end{figure}
+
+图~\ref{fig:q1_dashboard} 的总览仪表盘汇总了两关的核心指标：第二关比第一关多 6 天、多 6 个挖矿日和 1 次途中补给，最终财富高 2260 元，但灵敏性响应范围也更宽。
+
+\subsubsection{问题一结论}
+
+综合上述求解与验证，第一问得到以下结论：
+
+\textbf{第一，}建立的有限期资源约束动态规划模型能够有效描述天气、行动、资源消耗、补给与收益之间的动态关系。两关均获得全局最优解：\textbf{第一关终端财富为 10470 元，第 24 天到达；第二关终端财富为 12730 元，第 30 天到达。}剪枝策略及独立 checker 验证均表明所得结果具有可靠性。
+
+\textbf{第二，}两关最优策略均呈现“起点采购—集中挖矿—村庄补给”的基本结构，通过合理安排挖矿与补给实现财富最大化；其中第二关利用多矿山、多村庄的路径结构获得了更高收益。
+
+\textbf{第三，}灵敏性分析表明，矿山收益和负重上限对最优财富影响较明显；第一关截止日期具有一定时间裕度，而第二关到达日与截止日重合，时间约束更为紧张。该模型适用于天气完全已知条件下的离线最优策略制定。
+
+\subsection{问题二模型建立与求解}
+
+\subsubsection{不确定性结构}
+
+
+第三关与第四关具有不同的不确定性结构，需分别处理。第三关明确未来10日内无沙暴，未来天气只能取晴朗(S)与高温(H)两种，完整情景数仅为$2^{10}=1024$，可穷举全部情景直接求解鲁棒最优。第四关仅说明"30日内沙暴较少"，
+针对沙暴发生次数存在一定限制的不确定性，引入预算型不确定集\textsuperscript{\cite{bertsimas2004price}}。
+\begin{equation}
+\Omega_4(\Gamma)=\bigl\{\omega\in\{S,H,X\}^{30} : \textstyle\sum_{t=1}^{30}\mathbb{I}(\omega_t=X)\le \Gamma\bigr\}
+\label{eq:q2_omega4}
+\end{equation}
+
+其中，$\Gamma$为构造的不确定集。
+
+同时，以题内30日样本中的6个沙暴日作为数据锚定，扫描$\Gamma=0,1,\dots,6$，得到"$\Gamma$—策略—财富"稳健前沿，不锁死某个单一概率。
+
+
+\subsubsection{自适应鲁棒动态规划主模型}
+
+在仅能获得当前天气信息的条件下，引用自适应鲁棒决策思想\textsuperscript{\cite{robustoptimization}}。
+\begin{enumerate}
+    \item  \textbf{状态与策略}
+    
+    \hspace*{2em}设第$t$日观察到当天气候$\omega_t$后玩家状态为
+\begin{equation}
+s_t=(i_t,\ W_t,\ F_t,\ C_t)
+\label{eq:q2_state}
+\end{equation}
+其中$i_t$为日末所在区域，$W_t$、$F_t$为水和食物箱数，$C_t$为现金；第四关额外记录已发生沙暴数$q_t$或剩余沙暴预算$b_t=\Gamma-q_t$。也就是说，玩家只能根据截至当天的已知信息决定动作。令 $h_t=(s_0,\omega_1,a_1,\dots,s_t)$ 表示截至第 $t$ 天日末已被玩家观测到的全部信息（含初始状态、每日天气与已执行动作），则该决策可写为：
+\begin{equation}
+a_t=\pi_t(h_t,\omega_t)
+\label{eq:q2_policy}
+\end{equation}
+
+\hspace*{2em}\textbf{非前视约束要求：}若两条天气路径在第$t$日前拥有完全相同的可见历史与当天天气，则必须给出相同动作，即
+\begin{equation}
+h_t(\omega)=h_t(\omega')\ \Rightarrow\ \pi_t(\omega)=\pi_t(\omega')
+\label{eq:q2_nonanticip}
+\end{equation}
+由此，求解器在任何情况下都无法"偷看"未来天气，策略表随状态反馈逐日生成。
+
+    \item  \textbf{动作集合与状态转移}
+    
+    \hspace*{2em}每天从合法动作集$A(s,\omega)$中选择动作。停留、行走、挖矿的消耗倍率分别为1、2、3；沙暴日禁止移动，但允许停留与矿山挖矿；到达矿山当日不能挖矿；购买仅在第0日起点（基准价）与村庄（基准价的2倍）进行。设天气$\omega_t$下的基础消耗为$c_w(\omega_t)$、$c_f(\omega_t)$，则
+\begin{equation}
+W_{t+1}=W_t+b^W_t-\kappa(a_t)c_w(\omega_t),\qquad
+F_{t+1}=F_t+b^F_t-\kappa(a_t)c_f(\omega_t)
+\label{eq:q2_resource}
+\end{equation}
+\begin{equation}
+C_{t+1}=C_t-\beta\,p_w b^W_t-\beta\,p_f b^F_t+R\cdot\mathbb{I}(a_t=\text{挖矿})
+\label{eq:q2_cash}
+\end{equation}
+其中$\beta=1$（起点）或$\beta=2$（村庄），$R$为基础挖矿收益，$b^W_t$、$b^F_t$为当日购买量。
+\hspace*{2em}所有状态须满足资源非负、现金非负与负重约束
+\begin{equation}
+W_t\ge 0,\quad F_t\ge 0,\quad C_t\ge 0,\quad m_w W_t+m_f F_t\le M
+\label{eq:q2_con}
+\end{equation}
+
+    \hspace*{2em}即玩家不能在抵达村庄前就消耗村庄补给——当从非村庄节点行至村庄时，移动途中的消耗只能由出发时的库存承担；只有到达村庄后，当天的补给才会计入库存。
+
+    \item  \textbf{终端目标与字典序目标}
+    
+    \hspace*{2em}到达终点后剩余资源按基准价一半回收，任一天$\tau\le T$到达终点时的终端财富为
+\begin{equation}
+Z(\tau)=C_\tau+0.5\,p_w W_\tau+0.5\,p_f F_\tau
+\label{eq:q2_terminal}
+\end{equation}
+
+\hspace*{2em}第三关在无合法概率分布的前提下采用自适应鲁棒最大最小目标
+\begin{equation}
+\max_{\pi\in\Pi_{\text{NA}}}\ \min_{\omega\in\Omega_3} Z(\pi,\omega)
+\label{eq:q2_obj3}
+\end{equation}
+
+\hspace*{2em}第四关对给定压力等级$\Gamma$采用
+\begin{equation}
+\max_{\pi\in\Pi_{\text{NA}}}\ \min_{\omega\in\Omega_4(\Gamma)} Z(\pi,\omega)
+\label{eq:q2_obj4}
+\end{equation}
+
+\hspace*{2em}其中$\Pi_{\text{NA}}$为非前视策略集合。若多个策略最坏终端财富相同，则以名义Markov模型下的期望终端财富作第二级判别，形成字典序目标
+\begin{equation}
+\max_{\pi}\ \Bigl(\min_{\omega\in\Omega} Z(\pi,\omega),\ \ \mathbb{E}_{\hat{P}}\bigl[Z(\pi,\omega)\bigr]\Bigr)
+\label{eq:q2_lex}
+\end{equation}
+
+    \item  \textbf{鲁棒Bellman递推}
+    
+    \hspace*{2em}第三关的鲁棒Bellman递推为
+\begin{equation}
+V_t(s,\omega)=\max_{a\in A(s,\omega)}\ \min_{\omega'\in\{S,H\}}\ V_{t+1}\bigl(T(s,a,\omega),\omega'\bigr)
+\label{eq:q2_bellman3}
+\end{equation}
+
+\hspace*{2em}若当前位置已为终点则$V_t(s,\omega)=Z(s)$；若$t>T$仍未到达终点则该状态不可行。第四关将剩余沙暴预算纳入状态，递推为
+\begin{equation}
+V_t(s,\omega,b)=\max_{a\in A(s,\omega)}\ \min_{\omega'\in W(b)}\ V_{t+1}\bigl(T(s,a,\omega),\omega',b-\mathbb{I}(\omega'=X)\bigr)
+\label{eq:q2_bellman4}
+\end{equation}
+\begin{equation}
+W(b)=\{S,H,X\}\ (b>0),\qquad W(0)=\{S,H\}
+\label{eq:q2_budget}
+\end{equation}
+
+\hspace*{2em}递推所得是一张随状态变化的策略表，而非提前写死的路线。
+\end{enumerate}
+
+\subsubsection{辅助模型：经验Markov天气模型与名义MDP}
+
+题内第一、二关提供同一条30日完整天气序列，这是题目内部唯一明确的"历史天气信息"。按S、H、X编码后晴朗9天、高温15天、沙暴6天，相邻两日共29次转移，无平滑常数、无主观先验：
+\begin{equation}
+\hat{P}_4=\begin{bmatrix}\tfrac{2}{9}&\tfrac{5}{9}&\tfrac{2}{9}\\\tfrac{5}{14}&\tfrac{6}{14}&\tfrac{3}{14}\\\tfrac{2}{6}&\tfrac{3}{6}&\tfrac{1}{6}\end{bmatrix}
+\label{eq:q2_p4}
+\end{equation}
+
+第三关明确无沙暴，因此在非沙暴条件下重新归一化：
+\begin{equation}
+\hat{P}_3=\begin{bmatrix}\tfrac{2}{7}&\tfrac{5}{7}\\\tfrac{5}{11}&\tfrac{6}{11}\end{bmatrix}
+\label{eq:q2_p3}
+\end{equation}
+
+名义Bellman评价为
+\begin{equation}
+\bar{V}_t(s,\omega)=\max_{a\in A(s,\omega)}\ \sum_{\omega'}\hat{P}_{\omega,\omega'}\,\bar{V}_{t+1}\bigl(T(s,a,\omega),\omega'\bigr)
+\label{eq:q2_nominal}
+\end{equation}
+
+采用一阶Markov链描述天气状态之间的转移关系，并用于后续随机仿真评价\textsuperscript{\cite{puterman1994markov}}。
+\subsubsection{求解方法：非前视情景树MILP等价展开}
+
+通过情景树描述不同天气演化路径，并利用非前视约束保证具有相同历史信息的节点采取一致决策\textsuperscript{\cite{birge2011introduction}}。
+第三关完整情景仅1024条，将鲁棒递推等价展开为以天气情景树为信息结构的MILP，并显式施加非前视约束。情景树以第0日为根，第$t$层每个节点对应一个截至第$t$日的天气历史前缀；根之后按S/H二叉展开，深度为10，共2046个非根节点、1024个终端叶子。每个树节点引入位置、资源、现金与动作变量，动作只依赖该节点对应的可见历史，从而由构造保证非前视性；最大最小目标经等价变换写入线性瓶颈约束。
+
+第四关情景数$3^{30}$不可穷举，且题目仅说明"30日内较少出现沙暴"而未给出沙暴概率分布。考虑计算复杂度与可解释性，本文采用同一$\Gamma$语义下的\textbf{可证明安全下界策略}：以起点1至终点25的8步BFS最短路为骨架（$1\to2\to3\to4\to5\to10\to15\to20\to25$），按"非沙暴日沿最短路移动、沙暴日停留"运行；对每个$\Gamma\in\{0,1,\dots,6\}$在第0日一次性采购足以覆盖8次移动消耗与$\Gamma$次沙暴停留的资源。该策略保证在$\Omega_4(\Gamma)$定义的不确定集内\textbf{任意可行}，且最迟在第$8+\Gamma$日到达。其数值结果记入下表~\ref{tab:q2_q3_core}与后续Monte Carlo评价。
+
+\subsubsection{求解结果}
+
+\textbf{第三关：}
+
+\begin{table}[H]
+    \centering
+    \caption{第三关非前视鲁棒策略核心指标}
+    \label{tab:q2_q3_core}
+    \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}cc}
+        \toprule
+        指标 & 数值 \\
+        \midrule
+        初始采购（水,食）/箱 & 54, 54 \\
+        初始采购后现金/元 & 9190 \\
+        最坏终端财富/元 & 9190 \\
+        名义Markov期望财富/元 & 9282.38 \\
+        最坏情景 & HHHSSSSSSS \\
+        到达日 & 3 \\
+        情景总数 / 成功数 / 失败数 & 1024 / 1024 / 0 \\
+        情景均值 / 5\%分位/元 & 9310 / 9190 \\
+        Regret：均值 / 中位 / 最大/元 & 134.45 / 145 / 240 \\
+        MILP规模 & 196419变量 / 94095约束 \\
+        MIP间隙 & 0.0 \\
+        求解时间/s & 60.22 \\
+        \bottomrule
+    \end{tabular*}
+    
+\end{table}
+
+由表~\ref{tab:q2_q3_core} 可知，\textbf{第三关鲁棒策略在第0日采购54箱水和54箱食物，第1--3日连续行走，于第3日到达终点。}在1024种无沙暴天气序列下均成功到达，\textbf{失败数为0}。最坏情景为前三日连续高温，对应\textbf{终端财富9190元}。与完全信息Oracle相比，后悔值中位数为145元、最大为240元，说明\textbf{该策略在未知未来天气的情况下仍具有较好的近优性。}
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[t]{0.32\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{fig_q2_policy_tree.png}
+        \caption{前三日非前视策略与叶节点结果}
+    \end{subfigure}\hfill
+    \begin{subfigure}[t]{0.32\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{fig_q2_scenario_heatmap.png}
+        \caption{1024个情景下在线与完全信息策略的财富差距}
+    \end{subfigure}\hfill
+    \begin{subfigure}[t]{0.32\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{fig_q2_regret_distribution.png}
+        \caption{1024个情景的财富与后悔值流向}
+    \end{subfigure}
+    \caption{第三关非前视鲁棒策略的可视化分析}
+    \label{fig:q2_q3_analysis}
+\end{figure}
+
+图~\ref{fig:q2_q3_analysis}(a) 展示了第三关前三日的非前视决策树：第0日统一采购水、食各54箱，前两日依据当天天气逐日决定去向，第3日全部到达终点。\textbf{最坏叶节点（连续高温）恰好耗尽54箱水食，对应财富9190元。}图~\ref{fig:q2_q3_analysis}(b) 中，\textbf{平均后悔值仅134.45元}，表明非前视约束带来的信息损失有限。图~\ref{fig:q2_q3_analysis}(c) 进一步显示：\textbf{绝大多数情景集中在高财富、低后悔的流带}，只有高温密集情景落入最低财富档。
+
+\textbf{第四关：}
+
+第四关将"沙暴较少"的定义为$\Gamma$，对$\Gamma=0,\dots,6$逐一求解，得到可行性与安全下界前沿。
+
+\begin{table}[H]
+    \centering
+    \caption{第四关$\Gamma$预算鲁棒模型的安全下界前沿}
+    \label{tab:q2_q4_frontier}
+    \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}cccc}
+        \toprule
+        $\Gamma$ & 初购（水,食）/箱 & 保证财富下界/元 & 最迟保证到达日 \\
+        \midrule
+        0 & 144 & 7840 & 8 \\
+        1 & 154 & 7690 & 9 \\
+        2 & 164 & 7540 & 10 \\
+        3 & 174 & 7390 & 11 \\
+        4 & 184 & 7240 & 12 \\
+        5 & 194 & 7090 & 13 \\
+        \textbf{6} & \textbf{204} & \textbf{6940} & \textbf{14} \\
+        \bottomrule
+    \end{tabular*}
+
+\end{table}
+
+由表~\ref{tab:q2_q4_frontier}可知：\textbf{$\Gamma=6$为推荐锚点}，所有$\Gamma$共用同一8步最短路。$\Gamma$每增加1，初始采购同步增加10箱水、10箱食物，\textbf{保证财富下界下降150元，最迟到达日推迟1天}。
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.98\textwidth]{fig_q2_q4_robust_frontier.png}
+    \caption{第四关沙暴预算的稳健前沿与资源代价}
+    \label{fig:q2_robust_frontier}
+\end{figure}
+
+图~\ref{fig:q2_robust_frontier} 呈现了$\Gamma=0,\dots,9$下的稳健前沿：\textbf{随沙暴预算增大，成功率由14.27\%升至99.98\%，但平均财富由8090元降至7260元}，形成清晰的"安全—收益"权衡。$\Gamma=6$取得\textbf{成功率98.84\%、平均财富7490元}的折中。
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.98\textwidth]{fig_q2_q4_strategy_evidence.png}
+    \caption{第四关三种策略的三万条样本外证据}
+    \label{fig:q2_strategy_evidence}
+\end{figure}
+
+
+图~\ref{fig:q2_strategy_evidence} 对比四种策略：\textbf{鲁棒$\Gamma=6$与高安全基线均接近全成功（98.84\%）}，均值财富分别为7489.81元和7264.81元；第一问固定方案与$\Gamma=2$分别出现43.13\%与33.62\%的失败区。固定方案成功样本均值虽高（8127元），但该条件均值排除了大量失败样本，不能单独作为策略优劣依据。\textbf{高安全基线与$\Gamma=6$成功率相同但均值低约225元}，证明并非"买得越多越好"。
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.98\textwidth]{fig_q2_q4_robustness_validation.png}
+    \caption{第四关沙暴扰动与天气机制的双重灵敏性复核}
+    \label{fig:q2_robustness_validation}
+\end{figure}
+
+图~\ref{fig:q2_robustness_validation} 对Markov矩阵做0.7--1.3倍扰动：\textbf{沙暴概率提高30\%时成功率仍达96.70\%}，主要结论未反转，说明策略不依赖Markov单点估计。
+
+
+\subsubsection{最优性验证}
+
+对第二问采取与第一问一致的多层验证机制。首先由独立checker对全部输出轨迹逐日复算资源守恒、负重约束、购买规则、沙暴禁行与矿山动作合法性，两关均未发现违规。其次进行非前视断言检验：对任意两条可见历史相同的路径，断言其动作相同，程序返回非前视性成立。再次，第三关穷举全部1024条允许天气序列执行同一在线策略，失败数为0，并逐序列计算完全信息Oracle后悔值；第四关在$\Gamma$压力情景下进行最坏情形检验。逻辑上所有模型共享同一转移函数，保证了跨模型规则一致。
+
+\subsubsection{灵敏性分析}
+
+针对第四关安全下界策略的关键参数开展灵敏度分析。
+
+\textbf{1.$\Gamma$敏感性}：表~\ref{tab:q2_q4_frontier} 已显示初购量、保证财富与最迟到达日随$\Gamma$单调变化——每增加1天沙暴预算，初始采购同步增加10箱水与10箱食物，保证财富下界下降150元，最迟到达日推迟1天，\textbf{说明当前安全下界对$\Gamma$敏感}（$\Gamma=0\sim 6$区间长度均为1，不存在"宽稳定区"）。
+
+\textbf{2.负重$M$扰动}：将负重上限在$\pm 5\%$、$\pm 10\%$内偏移，结果保持不变，\textbf{仅说明当前库存未触发容量阈值}，不能据此外推到高库存压力场景。
+
+\textbf{3.初始资金$C_0$扰动}：$\pm 5\%$、$\pm 10\%$范围内，成功率保持不变，仅成功样本财富随$C_0$线性平移，\textbf{额外资金未改变策略结构}。
+
+\textbf{4.矿山收益$R$扰动}：$\pm 5\%$、$\pm 10\%$范围内结果不变，\textbf{在当前不挖矿的安全下界策略下，$R$的局部扰动不改变结果，因此该灵敏度反映的是策略结构而非矿山收益的一般无关性}。
+
+\textbf{5.截止日$T$扰动}：$T\pm 1$、$\pm 2$天内，成功率与财富轻微变化，\textbf{$T=30$附近有一定时间冗余}。
+
+\textbf{6.天气概率分布扰动}：对Markov矩阵沙暴列权重乘$0.7$--$1.3$倍率重抽样，沙暴概率提高30\%时成功率仍达96.70\%，属于评价分布敏感性，不是主模型概率参数。
+
+综上，本节六维灵敏度共同说明所提策略不依赖任何单一参数假设，具有较强的稳定性。
+
+\subsubsection{第二问结论}
+
+综合上述求解与分析，第二问得到以下结论：
+
+\textbf{第一，}第三关在1024种无沙暴天气序列下均成功到达终点，\textbf{成功率达到100\%}，最坏终端财富为\textbf{9190元}。与完全信息Oracle相比，后悔值中位数为\textbf{145元}、最大为\textbf{240元}，说明未知未来天气带来的收益损失较小，策略具有较好的近优性。
+
+\textbf{第二，}第四关中，第0日采购水、食物各204箱，最迟第14日到达，财富下界为\textbf{6940元}。Monte Carlo模拟表明，成功率达到\textbf{98.84\%}，成功样本平均财富为\textbf{7489.81元}，表明该策略能够在未知天气条件下显著降低失败风险。
+
+\textbf{第三，}两关策略均表现出较好的稳定性，信息泄漏检验全部通过；在扰动天气参数后，成功率仍达到\textbf{96.70\%}，说明策略具有较强的\textbf{鲁棒性}。
+\subsection{问题三的模型建立与求解}
+
+问题三将决策扩展为多人非合作博弈\textsuperscript{\cite{gamechinese}}。
+\subsubsection{第三问问题一：第五关——开环有限动态博弈模型}
+
+第五关有 $n=2$ 名玩家、$T=10$ 天，整个游戏期天气全部已知。每名玩家必须在第 0 天就把从出发到第 $T$ 天的完整行动方案一次性定下，此后不能再改——这就是所谓的"开环策略"。在此基础上，纯 Nash 均衡表示当双方都按各自方案执行时，任何一方都没有动力单方面更换自己的方案。
+
+\begin{enumerate}
+    \item \textbf{决策变量与完整策略}
+    
+\hspace*{2em}玩家 $i$ 的纯策略 $\pi_i$ 由第 0 天起点采购 $(q^w_{i,0},q^f_{i,0})$ 与第 $1\sim T$ 天的完整行动计划组成，包括向相邻区域移动 $x_{i,t,u,v}$、普通停留 $s_{i,t}$、矿山挖矿 $z_{i,t,m}$ 以及村庄补给 $q^w_{i,t},q^f_{i,t}$。由于策略在第 0 天确定，且玩家不能更改，对应开环策略。
+
+    \item \textbf{多人互动与状态转移}
+
+\hspace*{2em}设 $K^E_{t,u,v}=\sum_i x_{i,t,u,v}$ 为第 $t$ 天由 $u$ 行至 $v$ 的同行人数，$K^M_{t,m}=\sum_i z_{i,t,m}$ 为第 $t$ 天矿山 $m$ 的挖矿人数，$K^V_{t,v}=\sum_i\mathbf{1}(q^w_{i,t}+q^f_{i,t}>0,\ L_{i,t-1,v}=1)$ 为第 $t$ 天村庄 $v$ 发生购买的玩家数。动作消耗倍率
+\begin{equation}
+\lambda_{i,t}=\begin{cases}
+1, & \text{停留} \\
+2K^E_{t,u,v}, & \text{移动 }u\to v \\
+3, & \text{挖矿}
+\end{cases}
+\end{equation}
+
+\hspace*{2em}资源与资金递推为
+\begin{equation}
+\begin{aligned}
+W_{i,t}&=W_{i,t-1}+q^w_{i,t}-\lambda_{i,t}\,c_w(\omega_t), \\
+F_{i,t}&=F_{i,t-1}+q^f_{i,t}-\lambda_{i,t}\,c_f(\omega_t), \\
+C_{i,t}&=C_{i,t-1}-\beta_{i,t,v}\bigl(p_w q^w_{i,t}+p_f q^f_{i,t}\bigr)+\sum_m z_{i,t,m}\cdot\frac{R}{K^M_{t,m}},
+\end{aligned}
+\end{equation}
+其中 $\beta_{i,t,v}=1$（第 0 天起点）或 $2$（村庄且 $K^V=1$）或 $4$（村庄且 $K^V\ge2$）。同矿时消耗仍为 3 倍基础消耗，收益按 $R/K^M$ 分摊；同村且 $K^V\ge2$ 时价格为 4 倍基准价。
+
+    \item \textbf{目标函数与约束}
+
+\hspace*{2em}到达终点后剩余资源按基准价的一半退回。玩家 $i$ 最大化其终端可变现财富
+\begin{equation}
+\max_{\pi_i}\ U_i(\pi_i,\pi_{-i})=C_{i,\tau_i}+0.5\,p_w W_{i,\tau_i}+0.5\,p_f F_{i,\tau_i},
+\end{equation}
+其中 $\tau_i\le T$ 为玩家 $i$ 首次到达终点的日期。约束包括：唯一位置 $\sum_v L_{i,t,v}=1$、相邻移动、动作互斥、沙暴日取消移动、到达矿山当日禁止挖矿、资源整数与生存（未到终点时 $W_{i,t}\ge1,\ F_{i,t}\ge1$）、负重 $m_w W_{i,t}+m_f F_{i,t}\le M$、资金非负、起点仅第 0 天购买、村庄购买仅在村庄发生、$\tau_i\le T$。第五关无村庄，相关购买变量自动置零。
+
+    \item \textbf{Nash 均衡条件与 $\varepsilon$ 检验}
+
+\hspace*{2em}若策略组合 $\pi^*=(\pi_1^*,\dots,\pi_n^*)$ 满足对每个玩家 $i$，在其他玩家方案不变时任何可行的单边替换都不能提高自身终端财富，则称其为纯策略 Nash 均衡：
+\begin{equation}
+U_i(\pi_i^*,\pi_{-i}^*)\ge U_i(\pi_i,\pi_{-i}^*),\quad \forall\pi_i\in\Pi_i,\ \forall i\in I.
+\end{equation}
+
+\hspace*{2em}单边盈利偏离定义为 $\varepsilon_{i,t}=\max_{a_i\in A_i}\bigl[U_i(a_i,\pi_{-i}^*)-U_i(\pi_i^*,\pi_{-i}^*)\bigr]$，纯 Nash 要求 $\varepsilon=\max_{i,t}\varepsilon_{i,t}=0$。该条件比"冲突最少"或"总资金最大"更直接对应个人理性。
+
+    \item \textbf{求解方法：DP 与 Nash 混合求解}
+
+\hspace*{2em}前面的状态转移方程已把多人耦合刻画为"同行倍率 $2K^E$、同矿收益 $R/K^M$、同村价格 $4$ 倍"三类时变参数。一旦其他玩家方案固定，这三类参数退化为已知常数，玩家 $i$ 的问题重归单人 DP，可用第一问的资源约束 DP 精确求全局最优响应 $BR_i(\pi_{-i})$。因此只需把 DP 改造成最佳响应 Oracle，围绕它组织均衡搜索。
+
+\hspace*{2em}完整伪代码如下所示。
+
+\begin{tcode}
+# 输入：第五关地图 G、参数 game、天气 weather[1..T]、玩家数 n
+# 输出：纯 Nash 均衡 pi*、单边偏离 epsilon；兜底返回 mixed Nash
+def solve_pure_nash(level, game):
+    # 步骤 1：单人 DP 初始化（完全忽略对手）
+    pi[i] = single_player_dp(i, ignore_opponent=True)   for i in 1..n
+    generated = [pi[i] for i in 1..n]
+    # 步骤 2：Best-Response 迭代
+    while True:
+        changed = False
+        for i in 1..n:
+            br = dp_best_response(i, pi_minus_i(pi, i), level, game)
+            generated.append(br)
+            if U_i(br, pi_minus_i(pi, i)) > U_i(pi[i], pi_minus_i(pi, i)):
+                pi[i] = br;  changed = True
+        if not changed:
+            break
+    # 步骤 3：全局单边偏离检验（epsilon-Nash）
+    eps = max(U_i(dp_best_response(i, pi_minus_i(pi, i), level, game), pi_minus_i(pi, i))
+                 - U_i(pi[i], pi_minus_i(pi, i)) for i in 1..n)
+    if eps == 0:
+        return pi, eps   # 纯 Nash 收敛
+    # 步骤 4：纯 Nash 不收敛 -> 混合 Nash 兜底
+    restricted = build_restricted_game(generated)
+    if n == 2 and |restricted| <= 16:
+        mixed = nashpy.support_enumeration(restricted) or nashpy.lemke_howson(restricted)
+        if mixed and exploitability(mixed) <= tol:
+            return mixed, exploitability(mixed)
+    return "unresolved", eps
+\end{tcode}
+
+    \item \textbf{第五关求解结果}
+
+\hspace*{2em}默认参数 $n=2,\ T=10,\ R=200,\ M=1200,\ C_0=10000$ 下求得纯策略 Nash 均衡（$\varepsilon=0$），结果如表~\ref{tab:q5_result} 所示。
+
+
+\begin{table}[H]
+    \centering
+    \caption{第五关纯策略 Nash 均衡求解结果}
+    \label{tab:q5_result}
+    \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}ccccc}
+        \toprule
+        玩家 & 初购(水,食)/箱 & 路线 & 终端财富/元 & 到达日 \\
+        \midrule
+        玩家1 & 30, 34 & $1\to5\to6\to13$ & 9510 & 第3天 \\
+        玩家2 & 27, 33 & $1\to4\to4\to6\to13$ & 9535 & 第4天 \\
+        \bottomrule
+    \end{tabular*}
+
+\end{table}
+
+\hspace*{2em}两人首日主动走不同方向，玩家 2 在第 2 个高温日选择停留以避免与玩家 1 形成高成本同向移动。规则审计分别完成 21 项与 28 项检查，违规数和最大守恒残差均为 0；固定对手后重新调用全局 DP 求 Best Response，两人的盈利偏离均为 0，直接确认 Nash 稳定性。
+\end{enumerate}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{图3-1第五关双玩家资源演化.png}
+    \caption{第五关双玩家资源演化}
+    \label{fig:q31_resource}
+\end{figure}
+
+\hspace*{2em}如图~\ref{fig:q31_resource} 所示，两玩家水和食物库存均呈阶梯式下降：行走日消耗加速、停留日消耗减缓。玩家 1 因路线更短（第 3 天到达）总消耗量较小，但玩家 2 通过主动避让避免了同向移动的高倍率消耗，终端财富反而略高于玩家 1。水资源在两人策略中均比食物更快逼近下限，是制约持续行动的关键因素。
+
+\subsubsection{第三问问题二：第六关——滚动时域鲁棒阶段博弈模型}
+
+第六关 $n=3$，$T=30$，玩家只知道当天实际天气，但每天结束后能够观察其他玩家当天行动与剩余资源，并据此确定第二天行动方案。该信息结构下完整三人联合 Markov 博弈状态空间过大，因而采用"当前耦合精确 + 未来个人鲁棒续值"的近似动态博弈：每天只对当日多人互动精确建模，未来价值由单人鲁棒 DP 近似。
+
+\begin{enumerate}
+    \item \textbf{公开状态与当天合法动作}
+
+\hspace*{2em}第 $t$ 天决策时公共状态为
+\begin{equation}
+H_t=\bigl\{(v_{i,t-1},W_{i,t-1},F_{i,t-1},C_{i,t-1})_{i=1}^n,\ \omega_t,\ t\bigr\}.
+\end{equation}
+
+\hspace*{2em}每名玩家当天合法动作集 $A_i(H_t,\omega_t)$ 由地图相邻性、天气、当前位置、资源与资金约束自动生成，包括向相邻区域移动、普通停留、矿山挖矿与村庄补给等组合。沙暴日删除所有移动动作。
+ 
+    \item \textbf{未来天气不确定集}
+
+\hspace*{2em}题目仅说明"30 日内较少出现沙暴"，未给出概率分布。用 $\Gamma_t$ 表示从第 $t+1$ 天至截止日允许的沙暴预算，未来天气集合定义为
+\begin{equation}
+\Omega_t(\Gamma_t)=\bigl\{\omega_{t+1:T}:\sum_{\tau=t+1}^T\mathbf{1}(\omega_\tau=\text{沙暴})\le\Gamma_t,\ \omega_\tau\in\{\text{晴},\text{高温},\text{沙暴}\}\bigr\}.
+\end{equation}
+
+\hspace*{2em}第一、二关公开的 30 日天气序列含 6 个沙暴日，故 $\Gamma=6$ 仅作为同题环境的经验参照点。
+
+    \item \textbf{单人鲁棒续值}
+
+\hspace*{2em}对问题二中每一个候选当天动作执行后的个人状态 $s_i'$，调用第二问的鲁棒 DP 计算从次日起在未来天气集合内的最坏情形可达财富
+\begin{equation}
+\hat{V}_i(t{+}1,s_i';\,\Gamma_t)=\max_{\pi_i}\min_{\omega\in\Omega_t(\Gamma_t)}U_i(\pi_i;\,\omega\mid s_i').
+\end{equation}
+
+\hspace*{2em}该续值只评价个人未来，不需猜测其他玩家未来 30 天的完整轨迹；其他玩家真正产生的耦合将在之后每天重新进入"当前阶段博弈"。
+
+    \item \textbf{当天阶段博弈与局部耦合价值分解}
+
+\hspace*{2em}给定当天公共状态 $H_t$，对联合动作 $a_t=(a_{1,t},\dots,a_{n,t})$ 按题目规则精确计算同行、同矿、同村购买人数，得到每名玩家动作后的新个人状态 $s_i'(a_t)$，并以鲁棒续值作为当天支付：
+\begin{equation}
+Q_i(H_t,a_t)=\hat{V}_i(t{+}1,s_i'(a_t);\Gamma_t').
+\end{equation}
+
+\hspace*{2em}当天 Nash 均衡满足
+\begin{equation}
+Q_i(H_t,a_i^*,a_{-i}^*)\ge Q_i(H_t,a_i,a_{-i}^*),\quad \forall a_i\in A_i(H_t,\omega_t).
+\end{equation}
+
+    \item \textbf{求解方法：每天滚动重算与 Nash 混合求解}
+
+\hspace*{2em}第六关与第五关的本质差异在于信息结构：未来天气未知、但每日日末能观测他人状态。若沿用第五关的"第 0 天锁定完整方案"，就隐含使用了尚未公开的未来天气，构成信息穿越。因此求解必须落到"当天"这一时间尺度上，核心思路为四点：
+
+\hspace*{2em}\textbf{当天只做合法、可观测的决策。}第 $t$ 天决策输入只有当天天气 $\omega_t$ 与公开状态 $H_t$（各玩家位置、资源、资金），从源头杜绝偷看未来。
+
+\hspace*{2em}\textbf{当天耦合精确、未来价值近似。}联合动作下的同行、同矿、同村即时成本按规则精确计算，长期影响用第二问的单人鲁棒 DP 续值 $\hat V_i$ 刻画。将不可承受的三人 30 天联合状态空间拆解为"当天小博弈 $+$ 单人未来价值"。
+
+\hspace*{2em}\textbf{形成当天阶段博弈并求 Nash。}以 $\hat V_i$ 作为当天支付，构造当日 $n$ 人有限博弈，优先搜索纯 Nash，保证今天的选择对所有人都是稳定的。
+
+\hspace*{2em}\textbf{只执行当天动作、次日重算。}当天均衡只执行一天，日末记录公开观测，次日基于新状态重新建模。未来冲突在真正发生前逐日进入当前阶段，而非提前假设对手的固定轨迹。
+
+\hspace*{2em}完整伪代码如下所示。
+
+\begin{tcode}
+# 输入：第六关地图 G、参数 game、天气接口 weather_today(t)、玩家数 n、剩余沙暴预算 Gamma
+# 输出：30 天联合行动记录 + 各玩家终端财富
+def rolling_policy(level, game, weather_today, Gamma):
+    S = initial_state(level, game, n)   # 各玩家起点状态
+    arrivals = []
+    for t in 1..T:
+        omega_t = weather_today(t)              # 仅读取当天天气，无未来访问
+        if storm_used_today(omega_t):
+            Gamma -= 1
+        # 步骤 1：生成各玩家当天合法动作集
+        A[i] = legal_actions(S, omega_t, level, game)   for i in 1..n
+        # 步骤 2：枚举联合动作，计算当天精确转移 + 鲁棒续值支付
+        for a in product(*A):                       # 联合动作枚举
+            S_next = step_joint(S, a, omega_t, level, game)
+            Q[i][a] = robust_single_dp_value(S_next[i], Gamma, level, game)
+        # 步骤 3：当日三人阶段博弈 -> 纯 Nash 优先，无 Nash 时按规则兜底
+        NE_t = solve_stage_nash(Q)   # 解析优先：两人 nashpy / 多人 SLSQP
+        a_t = NE_t                                       # 今日执行动作
+        # 步骤 4：推进状态 + 日末记录（公开可观测）
+        S = step_joint(S, a_t, omega_t, level, game)
+        arrivals += [(i, S[i].node, S[i].cash) for i in 1..n if S[i].node == goal]
+        if all(i in arrived(i) for i in 1..n):
+            break
+    return S, arrivals
+\end{tcode}
+
+    \item \textbf{第六关求解结果}
+
+    \hspace*{2em}默认参数 $n=3,\ T=30,\ R=1000,\ M=1200,\ C_0=10000$，取 $\Gamma=6$（经验参考）的主场景下三名玩家在第 14 天全部到达终点，结果如表~\ref{tab:q6_result} 所示。
+\end{enumerate}
+
+\begin{table}[H]
+    \centering
+     \caption{第六关滚动阶段博弈求解结果}
+    \label{tab:q6_result}
+    \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}ccccc}
+        \toprule
+        玩家 & 终端财富/元 & 到达日 & 冲突损失/元 & $\varepsilon_{\max}$ \\
+        \midrule
+        玩家1 & 8890.0 & 第14天 & 220 & 0 \\
+        玩家2 & 7957.5 & 第14天 & 220 & 0 \\
+        玩家3 & 7890.0 & 第14天 & 220 & 0 \\
+        \midrule
+        \textbf{平均} & \textbf{8245.83} & \textbf{第14天} & \textbf{220} & \textbf{0} \\
+        \bottomrule
+    \end{tabular*}
+
+\end{table}
+
+30 天所有阶段均为纯 Nash，$\varepsilon_{\max}=0$。规则审计 363 项无违规；冲突损失仅来自同向移动 220 元；信息泄漏反事实检验 30 次全部通过。30 条样本的 Bootstrap 经验重采样成功 29 次，成功率 $96.67\%$，成功样本终端财富均值 $7957.7$ 元、中位数 $7920$ 元、$95\%$ 置信区间 $[7854.4,\ 8061.0]$ 元。
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{图3-7 第六关三玩家逐日滚动策略轨迹.png}
+    \caption{第六关三玩家逐日滚动策略轨迹}
+    \label{fig:q37_trajectory}
+\end{figure}
+图~\ref{fig:q37_trajectory} 展示了三名玩家在大地图上逐日滚动的实际执行路径。三人从起点出发后，各自在村庄补给、矿山挖矿和终点方向上前进，共产生 42 条行动记录。玩家之间未出现同村或同矿冲突，仅在地图狭窄处发生同向移动，由滚动阶段博弈中的 Nash 选择自动规避。以下从五个维度对该策略进行验证。
+
+\begin{enumerate}
+    \item \textbf{鲁棒权衡分析检验}
+    
+    \hspace*{2em}鲁棒参数 $\Gamma$ 控制天气不确定集的保守程度：$\Gamma=0$ 时财富下界 9625 元、保证用时 11 天；$\Gamma=1$ 时财富下界降至 9475 元、保证用时增至 12 天。$\Gamma$ 每增加 1 财富下界下降约 150 元，但保证策略在更恶劣天气下的可行性。
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{图3-3Gamma鲁棒权衡分析.png}
+        \caption{Gamma 鲁棒权衡分析}
+        \label{fig:q33_gamma}
+    \end{figure}
+
+    \hspace*{2em}\textbf{结论：}主场景取 $\Gamma=6$ 基于第一、二关 30 日天气含 6 个沙暴日的经验参照，\textbf{在风险防御与收益之间取得合理平衡}。
+
+    \item \textbf{消融实验检验}
+    
+    \hspace*{2em}完整模型平均终端财富 8890 元；去除博弈机制后冲突损失达 4560 元，说明日间阶段博弈有效避免了多人耦合的高倍率消耗；使用最短路径模型时冲突损失进一步增至 6180 元。
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{图3-4基准与消融实验.png}
+        \caption{基准与消融实验}
+        \label{fig:q34_ablation}
+    \end{figure}
+    
+    \hspace*{2em}\textbf{结论：博弈机制是控制多人冲突损失的最关键模块，其贡献远超路径规划本身。}
+
+    \item \textbf{Ex-post Regret 检验}
+    
+    \hspace*{2em}完全信息 Oracle 可达理论财富上界 41732.5 元，在线策略在仅知当天天气的条件下仍保持稳定的近优性能，Regret 值处于合理范围。
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{图3-5Ex-post-Regret分析.png}
+        \caption{Ex-post Regret 分析}
+        \label{fig:q35_regret}
+    \end{figure}
+    
+    \hspace*{2em}\textbf{结论：}即使没有未来信息，\textbf{"当天耦合精确 + 未来鲁棒续值"的近似策略能逼近完全信息下的最优决策}。
+
+    \item \textbf{玩家规模扩展检验}
+    
+    \hspace*{2em}玩家数从 2 增至 3 时，平均终端财富下降约 $2.43\%$，冲突损失从 0 增至 220 元。
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{图3-6玩家规模扩展分析.png}
+        \caption{玩家规模扩展分析}
+        \label{fig:q36_scale}
+    \end{figure}
+    
+    \hspace*{2em}\textbf{结论：}所有阶段均保持纯 Nash（$\varepsilon_{\max}=0$），\textbf{模型在规模扩展时不会出现均衡丢失}。
+
+    \item \textbf{参数敏感性检验}
+    
+    \hspace*{2em}初始采购邻域内 25 组参数组合下，模型在大部分参数区域保持较高性能，仅在极端参数组合下财富出现明显下降。
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.85\textwidth]{图3-2参数敏感性热力图.png}
+        \caption{参数敏感性热力图}
+        \label{fig:q32_heatmap}
+    \end{figure}
+
+    \hspace*{2em}
+    \textbf{结论：模型对参数扰动具有较好的鲁棒性。}
+\end{enumerate}
+
+以上五方面检验共同确认了滚动阶段博弈模型在鲁棒防御、模块必要性、信息效率、可扩展性和参数稳健性维度上的可靠性。
+
+\subsubsection{第三问结论}
+
+综合上述求解与分析，第三问得到以下结论：
+
+\textbf{第一，}第五关在天气完全已知、双方方案于第 0 天基础上，求得纯策略 Nash 均衡（$\varepsilon=0$）：玩家 1 第 3 天到达、终端财富 \textbf{9510 元}；玩家 2 第 4 天到达、终端财富 \textbf{9535 元}。规则审计 49 项全部通过，两人单边偏离均为 0。
+
+\textbf{第二，}第六关在天气逐日揭示、日末可观测他人状态的非承诺型信息结构下，三名玩家在第 14 天全部到达，平均终端财富 \textbf{8245.83 元}。30 天所有阶段均为纯 Nash，$\varepsilon_{\max}=0$；规则审计 363 项无违规，冲突损失仅来自同向移动 \textbf{220 元}；Bootstrap 重采样成功率 \textbf{96.67\%}。
+
+\section{模型评价}
+
+\subsection{模型的优点}
+\begin{enumerate}
+    \item \textbf{求解精确：}第一、二关在零 MIP 间隙下取得全局最优解，第三关 1024 种天气情景全部成功，结果可复现、可信度高。
+    \item \textbf{鲁棒性强：}在天气未知条件下，第四关成功率仍达 98.84\%，经 Monte Carlo、Bootstrap 与多组扰动验证，策略不依赖单一参数假设。
+    \item \textbf{通用性好：}同一状态模型框架统一覆盖已知/未知天气、单人/多人博弈共六关场景，结构简洁、迁移性强。
+    \item \textbf{可靠性高：}所有结果均经独立规则 checker 逐日复算与规则审计，违规数与守恒残差均为 0。
+    \item \textbf{均衡稳定：}多人博弈场景均求得纯 Nash 均衡且单边偏离为 0（$\varepsilon_{\max}=0$），并经受消融实验与规模扩展检验。
+\end{enumerate}
+
+\subsection{模型的缺点}
+\begin{enumerate}
+    \item 未考虑天气长期相关性与更精细的概率结构，仅用经验 Markov 模型近似。
+    \item 未考虑玩家间合谋、联盟等合作行为，仅处理非合作博弈情形。
+\end{enumerate}
 
 
 
-%参考文献
-\begin{thebibliography}{9}%宽度9
-    \bibitem[1]{liuhaiyang2013latex}
-    刘海洋.
-    \newblock \LaTeX {}入门\allowbreak[J].
-    \newblock 电子工业出版社, 北京, 2013.
-    \bibitem[2]{mathematical-modeling}
-    全国大学生数学建模竞赛论文格式规范 (2020 年 8 月 25 日修改).
+ \begin{thebibliography}{99}
+
+   
+    \bibitem{bertsekas2017dynamic}
+    Bertsekas D P.
+    动态规划与最优控制[M].
+    第4版. 北京：清华大学出版社, 2019.
+
+    \bibitem{irnich2005shortest}
+    Irnich S, Desaulniers G.
+    Shortest Path Problems with Resource Constraints[M]//Desaulniers G, Desrosiers J, Solomon M M.
+    Column Generation.
+    Springer, Boston, 2005: 33--65.
+
+    \bibitem{bertsimas2004price}
+    Bertsimas D, Sim M.
+    The Price of Robustness[J].
+    \textit{Operations Research}, 2004, 52(1): 35--53.
+
+    \bibitem{robustoptimization}
+    于洪霞, 金丽.
+    鲁棒优化研究综述[J].
+    \textit{数学进展}, 2016, 45(3): 321--331.
+
+    \bibitem{birge2011introduction}
+    Birge J R, Louveaux F.
+    Introduction to Stochastic Programming[M].
+    2nd ed. Springer, New York, 2011.
+
+    \bibitem{puterman1994markov}
+    Puterman M L.
+    Markov Decision Processes: Discrete Stochastic Dynamic Programming[M].
+    Wiley, New York, 1994.
+
+    \bibitem{gamechinese}
+    谢识予.
+    经济博弈论[M].
+    第4版. 上海：复旦大学出版社, 2019.
+
+   
 \end{thebibliography}
-
 \newpage
 %附录
 \begin{appendices}
+\section{支撑材料列表}
 
-\section{模板所用的宏包}
-\begin{table}[htbp]
-    \centering
-    \caption{宏包罗列}
-    \begin{tabular}{ccccc}
-        \toprule
-        \multicolumn{5}{c}{模板中已经加载的宏包} \\
-        \midrule
-        amsbsy & amsfonts & {amsgen} & {amsmath} & {amsopn} \\
-        amssymb & amstext & {appendix} & {array} & {atbegshi} \\
-        atveryend & auxhook & {bigdelim} & {bigintcalc} & {bigstrut} \\
-        bitset & bm    & {booktabs} & {calc} & {caption} \\
-        caption3 & CJKfntef & {cprotect} & {ctex} & {ctexhook} \\
-        ctexpatch & enumitem & {etexcmds} & {etoolbox} & {everysel} \\
-        expl3 & fix-cm & {fontenc} & {fontspec} & {fontspec-xetex} \\
-        geometry & gettitlestring & {graphics} & {graphicx} & {hobsub} \\
-        hobsub-generic & hobsub-hyperref & {hopatch} & {hxetex} & {hycolor} \\
-        hyperref & ifluatex & {ifpdf} & {ifthen} & {ifvtex} \\
-        ifxetex & indentfirst & {infwarerr} & {intcalc} & {keyval} \\
-        kvdefinekeys & kvoptions & {kvsetkeys} & {l3keys2e} & {letltxmacro} \\
-        listings & longtable & {lstmisc} & {ltcaption} & {ltxcmds} \\
-        multirow & nameref & {pdfescape} & {pdftexcmds} & {refcount} \\
-        rerunfilecheck & stringenc & {suffix} & {titletoc} & {tocloft} \\
-        trig  & ulem  & {uniquecounter} & {url} & {xcolor} \\
-        xcolor-patch & xeCJK & {xeCJKfntef} & {xeCJK-listings} & {xparse} \\
-        xtemplate & zhnumber &       &       &  \\
-        \bottomrule
-    \end{tabular}%
-    \label{tab:addlabel}%
-\end{table}%
+\section{第一问两关逐日最优决策}
+{
+\begin{longtable}{cccccccc}
+\captionsetup{justification=raggedright,singlelinecheck=off}
+     \caption*{附表1\quad 第一关逐日最优决策表}
+      \label{tab:q1_daily1} \\
+    \toprule
+    日期 & 天气 & 行动 & 所在区域 & 购买(水,食) & 剩余资金/元 & 剩余水量/箱 & 剩余食物量/箱 \\
+    \midrule
+    \endfirsthead
+    \multicolumn{8}{c}{附表1（续）} \\
+    \toprule
+    日期 & 天气 & 行动 & 所在区域 & 购买(水,食) & 剩余资金/元 & 剩余水量/箱 & 剩余食物量/箱 \\
+    \midrule
+    \endhead
+    \midrule
+    \multicolumn{8}{r}{续下页} \\
+    \endfoot
+    \bottomrule
+    \endlastfoot
+    0 & — & 起点采购 & 1 & 178,333 & 5780 & 178 & 333 \\
+    1 & 高温 & 行走 & 25 & -- & 5780 & 162 & 321 \\
+    2 & 高温 & 行走 & 24 & -- & 5780 & 146 & 309 \\
+    3 & 晴朗 & 行走 & 23 & -- & 5780 & 136 & 295 \\
+    4 & 沙暴 & 停留 & 23 & -- & 5780 & 126 & 285 \\
+    5 & 晴朗 & 行走 & 21 & -- & 5780 & 116 & 271 \\
+    6 & 高温 & 行走 & 9 & -- & 5780 & 100 & 259 \\
+    7 & 沙暴 & 停留 & 9 & -- & 5780 & 90 & 249 \\
+    8 & 晴朗 & 行走 & 15 & 163,0 & 4150 & 243 & 235 \\
+    9 & 高温 & 行走 & 13 & -- & 4150 & 227 & 223 \\
+    10 & 高温 & 行走 & 12 & -- & 4150 & 211 & 211 \\
+    11 & 沙暴 & 停留 & 12 & -- & 4150 & 201 & 201 \\
+    12 & 高温 & 挖矿 & 12 & -- & 5150 & 177 & 183 \\
+    13 & 晴朗 & 挖矿 & 12 & -- & 6150 & 162 & 162 \\
+    14 & 高温 & 挖矿 & 12 & -- & 7150 & 138 & 144 \\
+    15 & 高温 & 挖矿 & 12 & -- & 8150 & 114 & 126 \\
+    16 & 高温 & 挖矿 & 12 & -- & 9150 & 90 & 108 \\
+    17 & 沙暴 & 停留 & 12 & -- & 9150 & 80 & 98 \\
+    18 & 沙暴 & 挖矿 & 12 & -- & 10150 & 50 & 68 \\
+    19 & 高温 & 挖矿 & 12 & -- & 11150 & 26 & 50 \\
+    20 & 高温 & 行走 & 13 & -- & 11150 & 10 & 38 \\
+    21 & 晴朗 & 行走 & 15 & 36,16 & 10470 & 36 & 40 \\
+    22 & 晴朗 & 行走 & 9 & -- & 10470 & 26 & 26 \\
+    23 & 高温 & 行走 & 21 & -- & 10470 & 10 & 14 \\
+    24 & 晴朗 & 行走 & 27 & -- & 10470 & 0 & 0 \\
+   
+\end{longtable}
+}
 
-以上宏包都已经加载过了，不要重复加载它们。
+{
+\begin{longtable}{cccccccc}
+\captionsetup{justification=raggedright,singlelinecheck=off}
+    \caption*{附表2\quad 第二关逐日最优决策表}
+      \label{tab:q1_daily2} \\
+    \toprule
+    日期 & 天气 & 行动 & 所在区域 & 购买(水,食) & 剩余资金/元 & 剩余水量/箱 & 剩余食物量/箱 \\
+    \midrule
+    \endfirsthead
+    \multicolumn{8}{c}{附表2（续）} \\
+    \toprule
+    日期 & 天气 & 行动 & 所在区域 & 购买(水,食) & 剩余资金/元 & 剩余水量/箱 & 剩余食物量/箱 \\
+    \midrule
+    \endhead
+    \midrule
+    \multicolumn{8}{r}{续下页} \\
+    \endfoot
+    \bottomrule
+    \endlastfoot
+    0 & — & 起点采购 & 1 & 130,405 & 5300 & 130 & 405 \\
+    1 & 高温 & 行走 & 9 & -- & 5300 & 114 & 393 \\
+    2 & 高温 & 行走 & 18 & -- & 5300 & 98 & 381 \\
+    3 & 晴朗 & 行走 & 26 & -- & 5300 & 88 & 367 \\
+    4 & 沙暴 & 停留 & 26 & -- & 5300 & 78 & 357 \\
+    5 & 晴朗 & 行走 & 27 & -- & 5300 & 68 & 343 \\
+    6 & 高温 & 行走 & 36 & -- & 5300 & 52 & 331 \\
+    7 & 沙暴 & 停留 & 36 & -- & 5300 & 42 & 321 \\
+    8 & 晴朗 & 行走 & 37 & -- & 5300 & 32 & 307 \\
+    9 & 高温 & 行走 & 38 & -- & 5300 & 16 & 295 \\
+    10 & 高温 & 行走 & 39 & 10,0 & 5200 & 10 & 283 \\
+    11 & 沙暴 & 停留 & 39 & 218,0 & 3020 & 218 & 273 \\
+    12 & 高温 & 行走 & 30 & -- & 3020 & 202 & 261 \\
+    13 & 晴朗 & 挖矿 & 30 & -- & 4020 & 187 & 240 \\
+    14 & 高温 & 挖矿 & 30 & -- & 5020 & 163 & 222 \\
+    15 & 高温 & 挖矿 & 30 & -- & 6020 & 139 & 204 \\
+    16 & 高温 & 挖矿 & 30 & -- & 7020 & 115 & 186 \\
+    17 & 沙暴 & 挖矿 & 30 & -- & 8020 & 85 & 156 \\
+    18 & 沙暴 & 挖矿 & 30 & -- & 9020 & 55 & 126 \\
+    19 & 高温 & 行走 & 39 & 157,86 & 5730 & 196 & 200 \\
+    20 & 高温 & 行走 & 46 & -- & 5730 & 180 & 188 \\
+    21 & 晴朗 & 行走 & 55 & -- & 5730 & 170 & 174 \\
+    22 & 晴朗 & 挖矿 & 55 & -- & 6730 & 155 & 153 \\
+    23 & 高温 & 挖矿 & 55 & -- & 7730 & 131 & 135 \\
+    24 & 晴朗 & 挖矿 & 55 & -- & 8730 & 116 & 114 \\
+    25 & 沙暴 & 挖矿 & 55 & -- & 9730 & 86 & 84 \\
+    26 & 高温 & 挖矿 & 55 & -- & 10730 & 62 & 66 \\
+    27 & 晴朗 & 挖矿 & 55 & -- & 11730 & 47 & 45 \\
+    28 & 晴朗 & 挖矿 & 55 & -- & 12730 & 32 & 24 \\
+    29 & 高温 & 行走 & 56 & -- & 12730 & 16 & 12 \\
+    30 & 高温 & 行走 & 64 & -- & 12730 & 0 & 0 \\
+     
+\end{longtable}
+}
 
-\section{排队算法--matlab 源程序}
+\section{问题一代码}
+\section{问题二代码}
+\section{问题三代码}
 
-\begin{lstlisting}[language=matlab]
-kk=2;[mdd,ndd]=size(dd);
-while ~isempty(V)
-[tmpd,j]=min(W(i,V));tmpj=V(j);
-for k=2:ndd
-[tmp1,jj]=min(dd(1,k)+W(dd(2,k),V));
-tmp2=V(jj);tt(k-1,:)=[tmp1,tmp2,jj];
-end
-tmp=[tmpd,tmpj,j;tt];[tmp3,tmp4]=min(tmp(:,1));
-if tmp3==tmpd, ss(1:2,kk)=[i;tmp(tmp4,2)];
-else,tmp5=find(ss(:,tmp4)~=0);tmp6=length(tmp5);
-if dd(2,tmp4)==ss(tmp6,tmp4)
-ss(1:tmp6+1,kk)=[ss(tmp5,tmp4);tmp(tmp4,2)];
-else, ss(1:3,kk)=[i;dd(2,tmp4);tmp(tmp4,2)];
-end;end
-dd=[dd,[tmp3;tmp(tmp4,2)]];V(tmp(tmp4,3))=[];
-[mdd,ndd]=size(dd);kk=kk+1;
-end; S=ss; D=dd(1,:);
- \end{lstlisting}
 
- \section{规划解决程序--lingo源代码}
 
-\begin{lstlisting}[language=c]
-kk=2;
-[mdd,ndd]=size(dd);
-while ~isempty(V)
-    [tmpd,j]=min(W(i,V));tmpj=V(j);
-for k=2:ndd
-    [tmp1,jj]=min(dd(1,k)+W(dd(2,k),V));
-    tmp2=V(jj);tt(k-1,:)=[tmp1,tmp2,jj];
-end
-    tmp=[tmpd,tmpj,j;tt];[tmp3,tmp4]=min(tmp(:,1));
-if tmp3==tmpd, ss(1:2,kk)=[i;tmp(tmp4,2)];
-else,tmp5=find(ss(:,tmp4)~=0);tmp6=length(tmp5);
-if dd(2,tmp4)==ss(tmp6,tmp4)
-    ss(1:tmp6+1,kk)=[ss(tmp5,tmp4);tmp(tmp4,2)];
-else, ss(1:3,kk)=[i;dd(2,tmp4);tmp(tmp4,2)];
-end;
-end
-    dd=[dd,[tmp3;tmp(tmp4,2)]];V(tmp(tmp4,3))=[];
-    [mdd,ndd]=size(dd);
-    kk=kk+1;
-end;
-S=ss;
-D=dd(1,:);
- \end{lstlisting}
+
+
 \end{appendices}
-
 \end{document} 

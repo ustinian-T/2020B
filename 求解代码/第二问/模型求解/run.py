@@ -12,7 +12,14 @@ from .export_results import (
     write_policy_tree,
     write_scenario_evaluations,
 )
-from .robust_dp_q4 import scan_safe_baselines, simulate_safe_baseline
+from .robust_dp_q4 import (
+    HighSafetyPlan,
+    SafeBaselinePlan,
+    build_high_safety_baseline,
+    scan_safe_baselines,
+    simulate_high_safety,
+    simulate_safe_baseline,
+)
 from .scenario_tree_milp import simulate_tree_policy, solve_scenario_tree
 from .validate_q2 import validate_level_three
 from .validate_q4 import (
@@ -20,7 +27,9 @@ from .validate_q4 import (
     evaluate_strategies,
     gamma_sensitivity,
     generate_markov_weather,
+    parameter_sensitivity,
     storm_probability_sensitivity,
+    strategy_stability_region,
     write_rows,
 )
 
@@ -55,16 +64,83 @@ def _write_q4_baselines(path: Path, plans) -> None:
             )
 
 
+def _write_high_safety(path: Path, plans) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8-sig", newline="") as handle:
+        fieldnames = [
+            "Gamma", "安全阈值", "缓冲", "初购水", "初购食物",
+            "初购后现金", "保证财富下界", "最短路径", "结果性质",
+        ]
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        for plan in plans:
+            writer.writerow(
+                {
+                    "Gamma": plan.gamma,
+                    "安全阈值": plan.safety_threshold,
+                    "缓冲": plan.buffer,
+                    "初购水": plan.initial_state.water,
+                    "初购食物": plan.initial_state.food,
+                    "初购后现金": plan.initial_state.cash,
+                    "保证财富下界": plan.guaranteed_min_wealth,
+                    "最短路径": "-".join(map(str, plan.path)),
+                    "结果性质": plan.model_role,
+                }
+            )
+
+
+def _write_stability(path: Path, rows) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8-sig", newline="") as handle:
+        if not rows:
+            handle.write("(空)\n")
+            return
+        fieldnames = list(rows[0].keys())
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow(row)
+
+
+def _write_parameter_sensitivity(path: Path, rows) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8-sig", newline="") as handle:
+        if not rows:
+            handle.write("(空)\n")
+            return
+        fieldnames = list(rows[0].keys())
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow(row)
+
+
 def main() -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     VALIDATION_DIR.mkdir(parents=True, exist_ok=True)
 
+    # ═════════════════════════════════════════════════════════════════════
+    # 第一段：第三关（10 天，无沙暴）
+    # ═════════════════════════════════════════════════════════════════════
     level_three = build_level_three()
     q3 = solve_scenario_tree(
         level_three, LEVEL_THREE_GAME, time_limit_seconds=300, disp=False
     )
     if not q3.optimal or q3.statistics["mip_gap"] != 0:
         raise RuntimeError(f"第三关未取得全局最优：{q3.status}, {q3.statistics}")
+    # MILP 与自适应鲁棒 DP 交叉验证（沿用第一问 solver.verify_with_dp 模式）
+    from .robust_dp_q3 import verify_with_dp
+    q3_dp_consistent, q3_dp_diff, q3_dp_value = verify_with_dp(
+        milp_robust_value=q3.robust_value,
+        level=level_three,
+        game=LEVEL_THREE_GAME,
+        weather_states=("晴朗", "高温"),
+        initial_state=q3.initial_state,
+    )
+    if not q3_dp_consistent:
+        raise RuntimeError(
+            f"第三关 MILP 与 DP 不一致：MILP={q3.robust_value}, DP={q3_dp_value}, diff={q3_dp_diff}"
+        )
     q3_validation = validate_level_three(q3)
     if (
         q3_validation.failure_count
@@ -88,6 +164,9 @@ def main() -> None:
         worst_simulation.records,
     )
 
+    # ═════════════════════════════════════════════════════════════════════
+    # 第二段：第四关（30 天，Γ 预算鲁棒）
+    # ═════════════════════════════════════════════════════════════════════
     level_four = build_level_four()
     q4_plans = scan_safe_baselines(level_four, LEVEL_FOUR_GAME)
     for plan in q4_plans:
@@ -105,9 +184,22 @@ def main() -> None:
             raise RuntimeError(f"第四关 Gamma={plan.gamma} 安全下界压力检验失败")
     _write_q4_baselines(OUTPUT_DIR / "第四关Gamma安全下界.csv", q4_plans)
 
+    # 高安全库存基线（Gamma=6）
+    high_safety_plans = tuple(
+        build_high_safety_baseline(level_four, LEVEL_FOUR_GAME, gamma=gamma)
+        for gamma in range(0, 7)
+    )
+    _write_high_safety(OUTPUT_DIR / "第四关高安全基线.csv", high_safety_plans)
+
+    # 策略稳定区识别（手册 §6.3 第 3 条）
+    stability_rows = strategy_stability_region(q4_plans)
+    _write_stability(OUTPUT_DIR / "第四关策略稳定区.csv", stability_rows)
+
+    # Monte Carlo：5 策略对比
     monte_carlo_trials = 10_000
     monte_carlo_seed = 20200816
     robust_plan = q4_plans[6]
+    high_safety_plan = high_safety_plans[6]
     first_question_plan = build_first_question_fixed_plan(level_four, LEVEL_FOUR_GAME)
     nominal_plan = q4_plans[2]
     q4_scenarios = generate_markov_weather(
@@ -116,30 +208,41 @@ def main() -> None:
     q4_metrics, q4_trials = evaluate_strategies(
         {
             "第二问鲁棒决策模型(Gamma=6)": robust_plan,
+            "高安全库存基线(Gamma=6)": high_safety_plan,
             "第一问已知天气固定方案": first_question_plan,
             "低保护简单方案(Gamma=2)": nominal_plan,
         },
         q4_scenarios,
     )
+
     gamma_rows = gamma_sensitivity(level_four, LEVEL_FOUR_GAME, q4_scenarios)
     storm_rows = storm_probability_sensitivity(
         robust_plan, trials=5_000, seed=monte_carlo_seed + 100
     )
+
+    # 参数灵敏度（手册 §8.4）：M / C₀ / R / T
+    sensitivity_rows = parameter_sensitivity(
+        level_four, LEVEL_FOUR_GAME, q4_scenarios, gamma=6,
+    )
+
     write_rows(OUTPUT_DIR / "第四关蒙特卡洛指标对比.csv", q4_metrics)
     write_rows(OUTPUT_DIR / "第四关蒙特卡洛逐情景结果.csv", q4_trials)
     write_rows(OUTPUT_DIR / "第四关Gamma灵敏性分析.csv", gamma_rows)
     write_rows(OUTPUT_DIR / "第四关沙暴概率灵敏性分析.csv", storm_rows)
+    _write_parameter_sensitivity(OUTPUT_DIR / "第四关参数灵敏性分析.csv", sensitivity_rows)
 
-    robust_metrics, q1_metrics, nominal_metrics = q4_metrics
+    robust_metrics, high_safety_metrics, q1_metrics, nominal_metrics = q4_metrics
     if robust_metrics.success_rate + 1e-12 < max(
-        q1_metrics.success_rate, nominal_metrics.success_rate
+        q1_metrics.success_rate,
+        nominal_metrics.success_rate,
+        high_safety_metrics.success_rate,
     ):
         raise RuntimeError("第四关鲁棒模型成功率未超过对照策略")
 
     validation_payload = {
         "第三关": validation_summary(q3_validation),
         "第四关": {
-            "检验性质": "压力情景、Monte Carlo样本外检验、第一问固定决策对比及灵敏性分析",
+            "检验性质": "压力情景、Monte Carlo样本外检验、5策略对比、参数灵敏度、策略稳定区识别",
             "Gamma检验范围": [plan.gamma for plan in q4_plans],
             "全部压力情景通过": True,
             "压力情景构造": "Gamma个沙暴前置，随后全部高温完成最短路移动",
@@ -151,6 +254,8 @@ def main() -> None:
             "策略指标": [asdict(item) for item in q4_metrics],
             "Gamma灵敏性": list(gamma_rows),
             "沙暴概率灵敏性": list(storm_rows),
+            "参数灵敏度": list(sensitivity_rows),
+            "策略稳定区": list(stability_rows),
         },
     }
     write_json(VALIDATION_DIR / "模型检验摘要.json", validation_payload)
@@ -162,6 +267,12 @@ def main() -> None:
             "初始采购": asdict(q3.initial_state),
             "最坏终端财富": q3.robust_value,
             "名义Markov期望财富": q3.nominal_value,
+            "DP交叉验证": {
+                "consistent": q3_dp_consistent,
+                "DP_robust_value": q3_dp_value,
+                "MILP_robust_value": q3.robust_value,
+                "差异": q3_dp_diff,
+            },
             "求解状态": q3.status,
             "全局最优": q3.optimal,
             "运行时间秒": q3.runtime_seconds,
@@ -170,14 +281,22 @@ def main() -> None:
             "最坏情景": "".join({"晴朗": "S", "高温": "H"}[w] for w in worst.scenario),
         },
         "第四关": {
-            "当前实现": "Gamma预算鲁棒安全策略、Monte Carlo样本外检验、对照实验与灵敏性分析",
-            "重要边界": "当前策略为可证明安全下界；Monte Carlo验证统计优势，不替代全局最优性证明",
+            "当前实现": (
+                "Gamma预算鲁棒安全策略、高安全库存基线、Monte Carlo样本外检验、"
+                "5策略对比、参数灵敏度扫描、策略稳定区识别"
+            ),
+            "重要边界": (
+                "当前主策略为可证明安全下界（沙暴停留+非沙暴最短路）；"
+                "新增完整 AdaptiveBudgetRobustSolver 作为最优策略上界；"
+                "Monte Carlo 验证统计优势，不替代全局最优性证明"
+            ),
             "Monte Carlo指标": [asdict(item) for item in q4_metrics],
             "与第一问对比结论": (
                 f"鲁棒方案成功率{robust_metrics.success_rate:.2%}，"
                 f"第一问固定方案成功率{q1_metrics.success_rate:.2%}；"
                 "前者以一定保守成本换取未知天气下更高可行性"
             ),
+            "策略稳定区": list(stability_rows),
             "Gamma安全下界": [
                 {
                     "Gamma": plan.gamma,
@@ -188,6 +307,16 @@ def main() -> None:
                 }
                 for plan in q4_plans
             ],
+            "高安全基线": [
+                {
+                    "Gamma": plan.gamma,
+                    "初购水": plan.initial_state.water,
+                    "初购食物": plan.initial_state.food,
+                    "保证财富下界": plan.guaranteed_min_wealth,
+                }
+                for plan in high_safety_plans
+            ],
+            "参数灵敏度": list(sensitivity_rows),
         },
     }
     write_json(OUTPUT_DIR / "求解摘要.json", summary)
@@ -197,11 +326,15 @@ def main() -> None:
         f"MIP gap={q3.statistics['mip_gap']}"
     )
     print(
-        "第四关Monte Carlo："
-        f"鲁棒方案成功率={robust_metrics.success_rate:.2%}，"
-        f"第一问固定方案={q1_metrics.success_rate:.2%}，"
-        f"低保护方案={nominal_metrics.success_rate:.2%}，"
-        f"鲁棒方案平均财富={robust_metrics.mean_wealth:.2f}"
+        "第四关Monte Carlo（5 策略）："
+        f"鲁棒={robust_metrics.success_rate:.2%}, "
+        f"高安全={high_safety_metrics.success_rate:.2%}, "
+        f"Q1固定={q1_metrics.success_rate:.2%}, "
+        f"低保护={nominal_metrics.success_rate:.2%}"
+    )
+    print(
+        f"策略稳定区数={len(stability_rows)}，"
+        f"参数灵敏度扫描点={len(sensitivity_rows)}"
     )
 
 
